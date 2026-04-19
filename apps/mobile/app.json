@@ -1,0 +1,33 @@
+{
+  "expo": {
+    "name": "Local Music",
+    "slug": "local-music",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "localmusic",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.localmusic.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0e0e13"
+      },
+      "package": "com.localmusic.app"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "name": "Local Music"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-av"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

@@ -1,13 +1,21 @@
 {
-  "extends": "../../tsconfig.base.json",
+  "extends": "expo/tsconfig.base",
   "compilerOptions": {
-    "allowSyntheticDefaultImports": true,
-    "jsx": "react-native",
-    "lib": ["dom", "esnext"],
-    "moduleResolution": "node",
-    "noEmit": true,
-    "resolveJsonModule": true,
-    "types": ["react-native"]
+    "strict": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ],
+      "@shared/*": [
+        "../../packages/shared/src/*"
+      ]
+    }
   },
-  "exclude": ["node_modules", "babel.config.js", "metro.config.js", "jest.config.js"]
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts"
+  ]
 }
