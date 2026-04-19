@@ -1,0 +1,112 @@
+.now-playing-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: var(--player-height);
+  z-index: 100;
+  display: grid;
+  grid-template-columns: 1fr 2fr 1fr;
+  align-items: center;
+  padding: 0 var(--space-4);
+  border-top: 1px solid var(--glass-border);
+}
+
+/* Left */
+.now-playing-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  cursor: pointer;
+  min-width: 0;
+  max-width: 300px;
+}
+.now-playing-cover {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-md);
+  object-fit: cover;
+  flex-shrink: 0;
+  transition: var(--transition);
+}
+.now-playing-left:hover .now-playing-cover { transform: scale(1.04); }
+.now-playing-info { min-width: 0; flex: 1; }
+.now-playing-title { display: block; font-size: 0.9375rem; font-weight: 600; }
+.now-playing-artist { display: block; font-size: 0.8125rem; color: var(--color-on-surface-variant); }
+.now-playing-heart { color: var(--color-on-surface-variant); }
+
+/* Center */
+.now-playing-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+}
+.now-playing-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.active-ctrl { color: var(--color-primary) !important; }
+
+/* Seek */
+.now-playing-seek {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  max-width: 480px;
+}
+.now-playing-time {
+  font-size: 0.75rem;
+  color: var(--color-on-surface-variant);
+  white-space: nowrap;
+  width: 34px;
+}
+.now-playing-time:last-child { text-align: right; }
+
+.seek-bar {
+  flex: 1;
+  height: 4px;
+  background: rgba(255,255,255,0.15);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  position: relative;
+  transition: height 0.15s ease;
+}
+.seek-bar:hover { height: 6px; }
+.seek-bar:hover .seek-thumb { opacity: 1; }
+
+.seek-progress {
+  height: 100%;
+  background: var(--grad-primary);
+  border-radius: var(--radius-full);
+  position: relative;
+  pointer-events: none;
+}
+.seek-thumb {
+  position: absolute;
+  right: -6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 12px;
+  height: 12px;
+  border-radius: var(--radius-full);
+  background: #fff;
+  box-shadow: 0 0 8px rgba(168,85,247,0.5);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+/* Right */
+.now-playing-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  justify-content: flex-end;
+}
+
+.volume-bar {
+  flex: none !important;
+  width: 90px !important;
+}

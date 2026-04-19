@@ -1,0 +1,102 @@
+.np-page {
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  background-size: cover;
+  background-position: center;
+}
+.np-bg-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(14,14,19,0.85);
+  backdrop-filter: blur(60px);
+  -webkit-backdrop-filter: blur(60px);
+}
+
+.np-topbar {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 32px;
+}
+
+.np-content {
+  position: relative;
+  z-index: 2;
+  flex: 1;
+  display: grid;
+  grid-template-columns: 280px 1fr 280px;
+  gap: 24px;
+  padding: 0 32px 32px;
+  overflow: hidden;
+}
+
+.np-panel {
+  border-radius: var(--radius-2xl);
+  padding: var(--space-6);
+  overflow-y: auto;
+}
+
+.np-queue-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  border-radius: var(--radius-md);
+  transition: var(--transition);
+  cursor: pointer;
+}
+.np-queue-item:hover { background: var(--glass-bg); }
+.np-queue-item.active { background: rgba(168,85,247,0.15); }
+.np-queue-cover { width: 42px; height: 42px; border-radius: 8px; object-fit: cover; flex-shrink: 0; }
+
+.np-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+}
+
+.np-album-art {
+  width: 280px;
+  height: 280px;
+  border-radius: var(--radius-2xl);
+  object-fit: cover;
+  box-shadow: 0 0 80px rgba(168,85,247,0.3), 0 20px 60px rgba(0,0,0,0.5);
+}
+
+.np-seek {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  max-width: 400px;
+}
+
+.np-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.np-lyrics { display: flex; flex-direction: column; gap: 16px; }
+.np-lyric-line {
+  font-size: 1rem;
+  color: var(--color-on-surface-variant);
+  transition: var(--transition-slow);
+  cursor: pointer;
+  line-height: 1.5;
+}
+.np-lyric-line.active {
+  font-size: 1.2rem;
+  font-weight: 700;
+  background: var(--grad-text);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
