@@ -48,6 +48,10 @@ export const authRoutes = async (app: FastifyInstance) => {
       return reply.status(401).send({ error: 'Invalid credentials' });
     }
 
+    if (!user.isApproved) {
+      return reply.status(403).send({ error: 'Account pending approval by admin' });
+    }
+
     const token = AuthService.generateToken(user.id, user.role);
     return { user, token };
   });

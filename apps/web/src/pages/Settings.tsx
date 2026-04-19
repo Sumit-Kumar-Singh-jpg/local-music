@@ -48,7 +48,7 @@ export default function Settings() {
             key={s}
             onClick={() => setActiveSection(s)}
             style={{
-              width: '100%', border: 'none', background: 'transparent', textAlign: 'left',
+              width: '100%', border: 'none', textAlign: 'left',
               cursor: 'pointer', padding: '10px 12px', borderRadius: 'var(--radius-md)',
               color: s === activeSection ? 'var(--color-primary)' : 'var(--color-on-surface-variant)',
               fontFamily: 'inherit', fontSize: '0.9rem', fontWeight: s === activeSection ? 700 : 500,

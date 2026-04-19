@@ -5,11 +5,13 @@ import {
 } from 'react-native'
 import { router } from 'expo-router'
 import { LinearGradient } from 'expo-linear-gradient'
-import { useAuthStore } from '../../src/store/authStore'
-import { colors, gradients, radii, spacing, typography } from '../../src/theme/tokens'
+import { useAuthStore } from '@/store/authStore'
+import { useThemeStore } from '@/store/themeStore'
+import { colors, gradients, radii, spacing, typography } from '@/theme/tokens'
 
 export default function LoginScreen() {
   const { login, isLoading } = useAuthStore()
+  const { accentColor } = useThemeStore()
   const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
   const [isSignup, setIsSignup] = useState(false)
@@ -27,7 +29,7 @@ export default function LoginScreen() {
   return (
     <LinearGradient colors={['#0e0e13', '#1a0a2e', '#0e0e13']} style={styles.container}>
       {/* Glow blobs */}
-      <View style={styles.blobPurple} />
+      <View style={[styles.blobPurple, { backgroundColor: `${accentColor}22` }]} />
       <View style={styles.blobPink} />
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
@@ -44,8 +46,12 @@ export default function LoginScreen() {
             {/* Tabs */}
             <View style={styles.tabs}>
               {['Sign In', 'Sign Up'].map((t, i) => (
-                <TouchableOpacity key={t} style={[styles.tab, isSignup === !!i && styles.tabActive]} onPress={() => setIsSignup(!!i)}>
-                  <Text style={[styles.tabText, isSignup === !!i && styles.tabTextActive]}>{t}</Text>
+                <TouchableOpacity 
+                  key={t} 
+                  style={[styles.tab, isSignup === !!i && { backgroundColor: `${accentColor}22` }]} 
+                  onPress={() => setIsSignup(!!i)}
+                >
+                  <Text style={[styles.tabText, isSignup === !!i && { color: accentColor, fontWeight: '700' }]}>{t}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -53,25 +59,27 @@ export default function LoginScreen() {
             {/* Fields */}
             {isSignup && (
               <TextInput style={styles.input} placeholder="Your name" placeholderTextColor={colors.textMuted}
-                autoCapitalize="words" />
+                autoCapitalize="words" selectionColor={accentColor} />
             )}
             <TextInput
               style={styles.input} placeholder="Email address" placeholderTextColor={colors.textMuted}
               value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address"
+              selectionColor={accentColor}
             />
             <TextInput
               style={styles.input} placeholder="Password" placeholderTextColor={colors.textMuted}
               value={password} onChangeText={setPassword} secureTextEntry
+              selectionColor={accentColor}
             />
 
             {/* Submit */}
             <TouchableOpacity onPress={() => handleLogin()} activeOpacity={0.85} disabled={isLoading}>
-              <LinearGradient colors={gradients.primary} style={styles.btnPrimary} start={{x:0,y:0}} end={{x:1,y:0}}>
+              <View style={[styles.btnPrimary, { backgroundColor: accentColor }]}>
                 {isLoading
                   ? <ActivityIndicator color="#fff" />
                   : <Text style={styles.btnPrimaryText}>{isSignup ? 'Create Account' : 'Sign In'}</Text>
                 }
-              </LinearGradient>
+              </View>
             </TouchableOpacity>
 
             <View style={styles.divider}><View style={styles.dividerLine} /><Text style={styles.dividerText}>or try demo</Text><View style={styles.dividerLine} /></View>
@@ -83,7 +91,7 @@ export default function LoginScreen() {
                 <Text style={styles.btnDemoTitle}>Login as Admin</Text>
                 <Text style={styles.btnDemoSub}>admin@localmusic.app</Text>
               </View>
-              <Text style={[styles.btnDemoIcon, { marginLeft: 'auto', color: colors.primary }]}>ADMIN</Text>
+              <Text style={[styles.btnDemoIcon, { marginLeft: 'auto', color: accentColor }]}>ADMIN</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.btnDemo} onPress={() => handleLogin('user@localmusic.app','user123')} activeOpacity={0.8}>
@@ -103,7 +111,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container:  { flex: 1 },
   scroll:     { flexGrow: 1, justifyContent: 'center', padding: spacing[6] },
-  blobPurple: { position:'absolute', top: 60,  left: -80,  width: 300, height: 300, borderRadius: 150, backgroundColor: 'rgba(168,85,247,0.15)' },
+  blobPurple: { position:'absolute', top: 60,  left: -80,  width: 300, height: 300, borderRadius: 150 },
   blobPink:   { position:'absolute', bottom: 80, right: -80, width: 250, height: 250, borderRadius: 125, backgroundColor: 'rgba(236,72,153,0.1)' },
 
   logoWrap: { alignItems: 'center', marginBottom: spacing[8] },
@@ -114,9 +122,7 @@ const styles = StyleSheet.create({
   card:   { backgroundColor: colors.glassBg, borderColor: colors.glassBorder, borderWidth: 1, borderRadius: radii.xxl, padding: spacing[6] },
   tabs:   { flexDirection: 'row', marginBottom: spacing[5], backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: radii.full, padding: 3 },
   tab:    { flex: 1, paddingVertical: 8, borderRadius: radii.full, alignItems: 'center' },
-  tabActive: { backgroundColor: colors.glassBg },
   tabText:   { ...typography.bodyMd, color: colors.textMuted },
-  tabTextActive: { color: colors.text, fontWeight: '700' },
 
   input: {
     backgroundColor: 'rgba(255,255,255,0.06)', borderColor: colors.glassBorder, borderWidth: 1,

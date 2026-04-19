@@ -1,16 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { authApi } from '../lib/api'
-
-export interface User {
-  id: string
-  name: string
-  username: string
-  email: string
-  avatar: string
-  role: string
-  billingTier: string
-}
+import { User, Role, BillingTier } from '@local-music/shared/src/types/user'
 
 interface AuthState {
   user: User | null
@@ -23,14 +14,22 @@ interface AuthState {
 }
 
 function mapApiUser(apiUser: any): User {
+  const role = (apiUser.role || 'USER').toUpperCase() as Role
+  const billingTier = (apiUser.billingTier || 'FREE').toUpperCase() as BillingTier
+  
   return {
     id: apiUser.id,
     name: apiUser.profile?.displayName || apiUser.username || 'User',
+    displayName: apiUser.profile?.displayName,
     username: apiUser.username,
     email: apiUser.email,
     avatar: apiUser.profile?.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${apiUser.username || 'default'}`,
-    role: (apiUser.role || 'USER').toLowerCase(),
-    billingTier: (apiUser.billingTier || 'FREE').toLowerCase(),
+    avatarUrl: apiUser.profile?.avatarUrl,
+    role,
+    billingTier,
+    plan: billingTier,
+    createdAt: apiUser.createdAt || new Date().toISOString(),
+    updatedAt: apiUser.updatedAt || new Date().toISOString(),
   }
 }
 

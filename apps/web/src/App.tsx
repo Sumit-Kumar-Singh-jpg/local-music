@@ -28,12 +28,15 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
   const { user } = useAuthStore()
-  return user?.role === 'admin' ? <>{children}</> : <Navigate to="/" replace />
+  return user?.role === 'ADMIN' ? <>{children}</> : <Navigate to="/" replace />
 }
+
+import Modal from './components/ui/Modal'
 
 export default function App() {
   return (
     <BrowserRouter>
+      <Modal />
       <Routes>
         {/* Auth */}
         <Route path="/login" element={<LoginPage />} />
@@ -45,6 +48,9 @@ export default function App() {
           </AdminRoute>
         }>
           <Route index element={<AdminDashboard />} />
+          <Route path="users" element={<AdminDashboard />} />
+          <Route path="content" element={<AdminDashboard />} />
+          <Route path="tasks" element={<AdminDashboard />} />
         </Route>
 
         {/* Main App */}

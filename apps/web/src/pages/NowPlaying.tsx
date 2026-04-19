@@ -23,7 +23,7 @@ export default function NowPlaying() {
   const upNext = queue.filter(t => t.id !== track.id).slice(0, 5)
 
   return (
-    <div className="np-page fade-in" style={{ backgroundImage: `url(${track.cover || track.album?.coverArt || ''})` }}>
+    <div className="np-page fade-in" style={{ backgroundImage: `url(${track.cover || (typeof track.album === 'object' ? track.album?.coverArt : '') || ''})` }}>
       <div className="np-bg-overlay" />
 
       <div className="np-topbar">
@@ -40,10 +40,10 @@ export default function NowPlaying() {
             upNext.map(qt => (
               <div key={qt.id} className={`np-queue-item${qt.id === track.id ? ' active' : ''}`}
                 onClick={() => usePlayerStore.getState().play(qt, queue)}>
-                <img src={qt.cover || qt.album?.coverArt || 'https://picsum.photos/200'} alt={qt.title} className="np-queue-cover" />
+                <img src={qt.cover || (typeof qt.album === 'object' ? qt.album?.coverArt : '') || 'https://picsum.photos/200'} alt={qt.title} className="np-queue-cover" />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div className="truncate" style={{ fontSize: '0.875rem', fontWeight: 500 }}>{qt.title}</div>
-                  <div className="text-secondary" style={{ fontSize: '0.75rem' }}>{qt.artist?.name || qt.artist}</div>
+                  <div className="text-secondary" style={{ fontSize: '0.75rem' }}>{typeof qt.artist === 'object' ? qt.artist?.name : qt.artist}</div>
                 </div>
               </div>
             ))
@@ -54,10 +54,10 @@ export default function NowPlaying() {
 
         {/* Center: Player */}
         <div className="np-center">
-          <img src={track.cover || track.album?.coverArt || 'https://picsum.photos/400'} alt={track.title} className="np-album-art" />
+          <img src={track.cover || (typeof track.album === 'object' ? track.album?.coverArt : '') || 'https://picsum.photos/400'} alt={track.title} className="np-album-art" />
           <div style={{ textAlign: 'center', marginBottom: 24 }}>
             <h2 style={{ fontSize: '2rem', fontWeight: 900, letterSpacing: '-0.03em' }}>{track.title}</h2>
-            <p style={{ color: 'var(--color-on-surface-variant)' }}>{track.artist?.name || track.artist}</p>
+            <p style={{ color: 'var(--color-on-surface-variant)' }}>{typeof track.artist === 'object' ? track.artist?.name : track.artist}</p>
           </div>
 
           <div className="np-seek">
@@ -97,7 +97,7 @@ export default function NowPlaying() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div>
               <div className="text-secondary" style={{ fontSize: '0.75rem' }}>Album</div>
-              <div style={{ fontSize: '0.9rem' }}>{track.album?.title || track.album || 'Single'}</div>
+              <div style={{ fontSize: '0.9rem' }}>{typeof track.album === 'object' ? track.album?.title : (track.album || 'Single')}</div>
             </div>
             <div>
               <div className="text-secondary" style={{ fontSize: '0.75rem' }}>Duration</div>

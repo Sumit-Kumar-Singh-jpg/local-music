@@ -5,6 +5,7 @@ import staticPlugin from '@fastify/static';
 import path from 'path';
 import { musicRoutes } from './routes/music';
 import { authRoutes } from './routes/auth';
+import { AuthService } from './services/authService';
 import { searchRoutes } from './routes/search';
 import { tracksRoutes } from './routes/tracks';
 import { artistsRoutes } from './routes/artists';
@@ -39,6 +40,15 @@ export const buildApp = async () => {
   app.decorate('authenticate', async (request: any, reply: any) => {
     try {
       await request.jwtVerify();
+      
+      // Check if user is approved
+      const user = await AuthService.validateUser(request.user.userId);
+      if (!user) {
+        return reply.status(401).send({ error: 'User not found' });
+      }
+      if (!user.isApproved) {
+        return reply.status(403).send({ error: 'Account pending approval by admin' });
+      }
     } catch (err) {
       reply.send(err);
     }

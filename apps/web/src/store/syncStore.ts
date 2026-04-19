@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { SyncEvent, ConnectedDevice } from '../../../packages/shared/src/types/sync'
+import type { SyncEvent, ConnectedDevice } from '../../../../packages/shared/src/types/sync'
 
 // ── Device Identity ───────────────────────────────────────────────────────
 const DEVICE_ID_KEY  = 'lm-device-id'
@@ -184,7 +184,7 @@ export const useSyncStore = create<SyncState>((set, get) => ({
         payload: {
           trackId:     track.id,
           trackTitle:  track.title,
-          trackArtist: track.artist,
+          trackArtist: typeof track.artist === 'object' ? track.artist?.name : track.artist,
           trackCover:  track.cover,
           duration:    track.duration,
           progress,

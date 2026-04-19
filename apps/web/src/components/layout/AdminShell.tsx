@@ -1,11 +1,15 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../../store/authStore'
+import { useModalStore } from '../../store/modalStore'
+import { adminApi } from '../../lib/api'
+import { useState } from 'react'
 import './AdminShell.css'
 
 const ADMIN_NAV = [
   { to: '/admin',          icon: '⊞', label: 'Dashboard'       },
   { to: '/admin/users',    icon: '👥', label: 'Users'           },
   { to: '/admin/content',  icon: '🎵', label: 'Content'         },
+  { to: '/admin/tasks',    icon: '⚡', label: 'Ingestion Progres'},
   { to: '/admin/analytics',icon: '📊', label: 'Analytics'       },
   { to: '/admin/revenue',  icon: '💰', label: 'Revenue'         },
   { to: '/admin/reports',  icon: '📋', label: 'Reports'         },
@@ -49,7 +53,7 @@ export default function AdminShell() {
           </button>
           <div className="admin-user">
             <img
-              src={user?.avatar ?? ''}
+              src={user?.avatar ?? `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.name}`}
               alt={user?.name}
               className="admin-user-avatar"
             />

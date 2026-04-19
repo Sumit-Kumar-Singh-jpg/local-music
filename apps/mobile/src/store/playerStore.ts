@@ -1,15 +1,5 @@
 import { create } from 'zustand'
-
-export interface Track {
-  id: string
-  title: string
-  artist: string
-  album: string
-  duration: number
-  cover: string
-  explicit?: boolean
-  hifi?: boolean
-}
+import { Track } from '@local-music/shared/src/types/track'
 
 interface PlayerState {
   track: Track | null
@@ -36,14 +26,14 @@ interface PlayerState {
 }
 
 export const DEMO_TRACKS: Track[] = [
-  { id: '1', title: 'Midnight City',   artist: 'M83',           album: "Hurry Up, We're Dreaming", duration: 244, cover: 'https://picsum.photos/seed/t1/400/400', hifi: true  },
-  { id: '2', title: 'Blinding Lights', artist: 'The Weeknd',    album: 'After Hours',               duration: 200, cover: 'https://picsum.photos/seed/t2/400/400', hifi: true  },
-  { id: '3', title: 'Save Your Tears', artist: 'The Weeknd',    album: 'After Hours',               duration: 215, cover: 'https://picsum.photos/seed/t3/400/400'              },
-  { id: '4', title: 'Levitating',      artist: 'Dua Lipa',      album: 'Future Nostalgia',          duration: 203, cover: 'https://picsum.photos/seed/t4/400/400', hifi: true  },
-  { id: '5', title: 'Stay',            artist: 'The Kid LAROI', album: 'F*ck Love 3',               duration: 141, cover: 'https://picsum.photos/seed/t5/400/400', explicit: true },
-  { id: '6', title: 'Heat Waves',      artist: 'Glass Animals', album: 'Dreamland',                 duration: 238, cover: 'https://picsum.photos/seed/t6/400/400', hifi: true  },
-  { id: '7', title: 'As It Was',       artist: 'Harry Styles',  album: "Harry's House",             duration: 167, cover: 'https://picsum.photos/seed/t7/400/400', hifi: true  },
-  { id: '8', title: 'Anti-Hero',       artist: 'Taylor Swift',  album: 'Midnights',                 duration: 200, cover: 'https://picsum.photos/seed/t8/400/400', hifi: true  },
+  { id: '1', title: 'Midnight City',   artistId: 'm83',    artistName: 'M83',           albumTitle: "Hurry Up, We're Dreaming", duration: 244, cover: 'https://picsum.photos/seed/t1/400/400', hifi: true, isExplicit: false, audioUrl: '', playCount: 0, releaseDate: ''  },
+  { id: '2', title: 'Blinding Lights', artistId: 'wknd',   artistName: 'The Weeknd',    albumTitle: 'After Hours',               duration: 200, cover: 'https://picsum.photos/seed/t2/400/400', hifi: true, isExplicit: false, audioUrl: '', playCount: 0, releaseDate: ''  },
+  { id: '3', title: 'Save Your Tears', artistId: 'wknd',   artistName: 'The Weeknd',    albumTitle: 'After Hours',               duration: 215, cover: 'https://picsum.photos/seed/t3/400/400', isExplicit: false, audioUrl: '', playCount: 0, releaseDate: ''              },
+  { id: '4', title: 'Levitating',      artistId: 'dua',    artistName: 'Dua Lipa',      albumTitle: 'Future Nostalgia',          duration: 203, cover: 'https://picsum.photos/seed/t4/400/400', hifi: true, isExplicit: false, audioUrl: '', playCount: 0, releaseDate: ''  },
+  { id: '5', title: 'Stay',            artistId: 'laroi',  artistName: 'The Kid LAROI', albumTitle: 'F*ck Love 3',               duration: 141, cover: 'https://picsum.photos/seed/t5/400/400', isExplicit: true, audioUrl: '', playCount: 0, releaseDate: '' },
+  { id: '6', title: 'Heat Waves',      artistId: 'glass',  artistName: 'Glass Animals', albumTitle: 'Dreamland',                 duration: 238, cover: 'https://picsum.photos/seed/t6/400/400', hifi: true, isExplicit: false, audioUrl: '', playCount: 0, releaseDate: ''  },
+  { id: '7', title: 'As It Was',       artistId: 'harry',  artistName: 'Harry Styles',  albumTitle: "Harry's House",             duration: 167, cover: 'https://picsum.photos/seed/t7/400/400', hifi: true, isExplicit: false, audioUrl: '', playCount: 0, releaseDate: ''  },
+  { id: '8', title: 'Anti-Hero',       artistId: 'taylor', artistName: 'Taylor Swift',  albumTitle: 'Midnights',                 duration: 200, cover: 'https://picsum.photos/seed/t8/400/400', hifi: true, isExplicit: false, audioUrl: '', playCount: 0, releaseDate: ''  },
 ]
 
 export const usePlayerStore = create<PlayerState>((set, get) => ({
