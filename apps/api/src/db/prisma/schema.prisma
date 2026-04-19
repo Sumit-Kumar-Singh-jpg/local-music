@@ -1,0 +1,113 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ARTIST
+  ADMIN
+}
+
+enum BillingTier {
+  FREE
+  PATRON
+}
+
+enum AlbumType {
+  ALBUM
+  SINGLE
+  EP
+}
+
+model User {
+  id              String      @id @default(uuid())
+  email           String      @unique
+  passwordHash    String
+  username        String      @unique
+  role            Role        @default(USER)
+  billingTier     BillingTier @default(FREE)
+  registrationRegion String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  profile         Profile?
+  artistProfile   ArtistProfile?
+  sessions        Session[]
+}
+
+model Profile {
+  id            String   @id @default(uuid())
+  userId        String   @unique
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  handle        String   @unique
+  displayName   String?
+  avatarUrl     String?
+  bio           String?
+  settings      Json?    // Audio quality, notifications, etc.
+  tasteProfile  Json?    // genres, energy, etc.
+  socialLinks   Json?    // spotify, instagram links
+}
+
+model ArtistProfile {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name            String
+  bio             String?
+  image           String?
+  coverImage      String?
+  monthlyListeners Int     @default(0)
+  isVerified      Boolean  @default(false)
+  socialLinks     Json?
+  monetization    Json?    // Tip jar url, merch links
+
+  tracks          Track[]
+  albums          Album[]
+}
+
+model Track {
+  id              String   @id @default(uuid())
+  title           String
+  duration        Int      // in seconds
+  isExplicit      Boolean  @default(false)
+  audioUrl        String
+  highQualityUrl  String?
+  losslessUrl     String?
+  playCount       Int      @default(0)
+  lyricsId        String?
+  bpm             Int?
+  key             String?
+  releaseDate     DateTime @default(now())
+  
+  artistId        String
+  artist          ArtistProfile @relation(fields: [artistId], references: [id])
+  albumId         String?
+  album           Album?   @relation(fields: [albumId], references: [id])
+}
+
+model Album {
+  id          String   @id @default(uuid())
+  title       String
+  coverArt    String?
+  releaseDate DateTime @default(now())
+  type        AlbumType @default(ALBUM)
+  
+  artistId    String
+  artist      ArtistProfile @relation(fields: [artistId], references: [id])
+  tracks      Track[]
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  deviceId  String?
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}

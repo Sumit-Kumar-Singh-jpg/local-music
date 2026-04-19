@@ -14,6 +14,7 @@ export default defineConfig({
   },
   server: {
     port: 3000,
+    strictPort: true,
     open: true,
     proxy: {
       // Proxy all /api/* requests to the Fastify backend at :3001

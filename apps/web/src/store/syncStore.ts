@@ -66,10 +66,10 @@ export const useSyncStore = create<SyncState>((set, get) => ({
       // ── TRANSFER received — this tab was asked to start playing ──
       if (event.type === 'TRANSFER' && event.payload.trackId) {
         // Dynamically import playerStore to start playing the handed-off track
-        import('./playerStore').then(({ usePlayerStore, DEMO_TRACKS }) => {
+        import('./playerStore').then(({ usePlayerStore }) => {
           const store = usePlayerStore.getState()
-          // Find the track in the demo queue; fall back to any track info provided
-          const track = DEMO_TRACKS.find(t => t.id === event.payload.trackId) ?? {
+          // Find the track in the current queue; fall back to event payload info
+          const track = store.queue.find(t => t.id === event.payload.trackId) ?? {
             id:       event.payload.trackId!,
             title:    event.payload.trackTitle  ?? 'Unknown Track',
             artist:   event.payload.trackArtist ?? 'Unknown Artist',

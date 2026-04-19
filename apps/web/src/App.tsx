@@ -32,8 +32,6 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
-  useAuthStore.getState().initDemoUser()
-
   return (
     <BrowserRouter>
       <Routes>

@@ -3,15 +3,20 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "turbo run dev",
+    "dev": "npx kill-port 3000 3001 && turbo run dev",
+    "dev:api": "turbo run dev --filter @local-music/api",
+    "dev:web": "turbo run dev --filter @local-music/web",
     "build": "turbo run build",
-    "lint": "turbo run lint"
+    "lint": "turbo run lint",
+    "infra:up": "docker-compose -f infra/docker-compose.yml up -d",
+    "infra:down": "docker-compose -f infra/docker-compose.yml down"
   },
   "devDependencies": {
+    "kill-port": "^2.0.1",
     "turbo": "latest",
     "typescript": "^5.0.0"
   },
-  "packageManager": "pnpm@8.0.0",
+  "packageManager": "npm@11.6.1",
   "workspaces": [
     "apps/*",
     "packages/*"

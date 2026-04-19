@@ -1,31 +1,38 @@
-import { useState } from 'react'
-import { DEMO_TRACKS } from '../store/playerStore'
+import { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import { musicApi } from '../lib/api'
 import { usePlayerStore } from '../store/playerStore'
 
 const GENRES = [
-  { name: 'Pop',       color: '#A855F7', cover: 'https://picsum.photos/seed/g1/200/200' },
-  { name: 'Hip-Hop',   color: '#EC4899', cover: 'https://picsum.photos/seed/g2/200/200' },
-  { name: 'Electronic',color: '#3B82F6', cover: 'https://picsum.photos/seed/g3/200/200' },
-  { name: 'R&B',       color: '#10B981', cover: 'https://picsum.photos/seed/g4/200/200' },
-  { name: 'Rock',      color: '#F59E0B', cover: 'https://picsum.photos/seed/g5/200/200' },
-  { name: 'Jazz',      color: '#EF4444', cover: 'https://picsum.photos/seed/g6/200/200' },
-  { name: 'Classical', color: '#6366F1', cover: 'https://picsum.photos/seed/g7/200/200' },
-  { name: 'Country',   color: '#F97316', cover: 'https://picsum.photos/seed/g8/200/200' },
-  { name: 'Latin',     color: '#84CC16', cover: 'https://picsum.photos/seed/g9/200/200' },
-  { name: 'K-Pop',     color: '#06B6D4', cover: 'https://picsum.photos/seed/g10/200/200' },
-  { name: 'Folk',      color: '#A78BFA', cover: 'https://picsum.photos/seed/g11/200/200' },
-  { name: 'Podcasts',  color: '#FB923C', cover: 'https://picsum.photos/seed/g12/200/200' },
+  { name: 'Pop',       color: '#A855F7' }, { name: 'Hip-Hop',   color: '#EC4899' },
+  { name: 'Electronic',color: '#3B82F6' }, { name: 'R&B',       color: '#10B981' },
+  { name: 'Rock',      color: '#F59E0B' }, { name: 'Jazz',      color: '#EF4444' },
+  { name: 'Classical', color: '#6366F1' }, { name: 'Country',   color: '#F97316' },
+  { name: 'Latin',     color: '#84CC16' }, { name: 'K-Pop',     color: '#06B6D4' },
+  { name: 'Folk',      color: '#A78BFA' }, { name: 'Ambient',   color: '#FB923C' },
 ]
 
 export default function Search() {
-  const [query, setQuery] = useState('')
+  const [searchParams] = useSearchParams()
+  const initialQuery = searchParams.get('q') || ''
+  const [query, setQuery] = useState(initialQuery)
+  const [results, setResults] = useState<any[]>([])
   const { play } = usePlayerStore()
 
-  const results = query.length > 1
-    ? DEMO_TRACKS.filter(t =>
-        t.title.toLowerCase().includes(query.toLowerCase()) ||
-        t.artist.toLowerCase().includes(query.toLowerCase()))
-    : []
+  useEffect(() => {
+    if (query.length > 1) {
+      const timer = setTimeout(() => {
+        musicApi.search(query).then(res => setResults(res.results)).catch(console.error)
+      }, 300)
+      return () => clearTimeout(timer)
+    } else {
+      setResults([])
+    }
+  }, [query])
+
+  const handleGenreClick = (genre: string) => {
+    setQuery(genre)
+  }
 
   return (
     <div className="fade-in" style={{ paddingBottom: 40 }}>
@@ -46,13 +53,13 @@ export default function Search() {
           {results.map((t, i) => (
             <div key={t.id} className={`track-row`} onClick={() => play(t, results)}>
               <span className="track-num">{i+1}</span>
-              <img src={t.cover} alt={t.title} className="track-thumb" />
+              <img src={t.album?.coverArt || t.cover || 'https://picsum.photos/200'} alt={t.title} className="track-thumb" />
               <div className="track-info">
                 <div className="track-title">{t.title}</div>
-                <div className="track-artist">{t.artist}</div>
+                <div className="track-artist">{t.artistName || t.artist?.name || t.artist}</div>
               </div>
-              <span className="text-secondary" style={{ fontSize: '0.8rem' }}>{t.album}</span>
-              <span className="track-duration">{`${Math.floor(t.duration/60)}:${(t.duration%60).toString().padStart(2,'0')}`}</span>
+              <span className="text-secondary" style={{ fontSize: '0.8rem' }}>{t.albumTitle || t.album?.title || t.album}</span>
+              <span className="track-duration">{t.duration ? `${Math.floor(t.duration/60)}:${(t.duration%60).toString().padStart(2,'0')}` : '--'}</span>
             </div>
           ))}
         </section>
@@ -66,7 +73,9 @@ export default function Search() {
                 className="home-category-card"
                 style={{
                   background: `linear-gradient(135deg, ${g.color}bb, ${g.color}44)`,
+                  cursor: 'pointer',
                 }}
+                onClick={() => handleGenreClick(g.name)}
               >
                 <span className="home-category-name">{g.name}</span>
               </div>

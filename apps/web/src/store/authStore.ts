@@ -1,70 +1,84 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { authApi } from '../lib/api'
 
 export interface User {
   id: string
   name: string
+  username: string
   email: string
-  avatar?: string
-  role: 'user' | 'admin'
-  plan: 'free' | 'premium'
+  avatar: string
+  role: string
+  billingTier: string
 }
 
 interface AuthState {
   user: User | null
+  token: string | null
   isLoading: boolean
-  login: (email: string, password: string) => Promise<void>
+  login: (identifier: string, password: string) => Promise<void>
+  register: (name: string, email: string, password: string, username: string) => Promise<void>
   logout: () => void
-  initDemoUser: () => void
+  updateUser: (updates: Partial<User>) => void
 }
 
-// Demo users
-const DEMO_USERS: Record<string, User & { password: string }> = {
-  'admin@localmusic.app': {
-    id: 'admin-001',
-    name: 'Super Admin',
-    email: 'admin@localmusic.app',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=admin',
-    role: 'admin',
-    plan: 'premium',
-    password: 'admin123',
-  },
-  'user@localmusic.app': {
-    id: 'user-001',
-    name: 'Sumit Kumar',
-    email: 'user@localmusic.app',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=sumit',
-    role: 'user',
-    plan: 'free',
-    password: 'user123',
-  },
+function mapApiUser(apiUser: any): User {
+  return {
+    id: apiUser.id,
+    name: apiUser.profile?.displayName || apiUser.username || 'User',
+    username: apiUser.username,
+    email: apiUser.email,
+    avatar: apiUser.profile?.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${apiUser.username || 'default'}`,
+    role: (apiUser.role || 'USER').toLowerCase(),
+    billingTier: (apiUser.billingTier || 'FREE').toLowerCase(),
+  }
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
       user: null,
+      token: null,
       isLoading: false,
 
-      login: async (email: string, password: string) => {
+      login: async (identifier: string, password: string) => {
         set({ isLoading: true })
-        await new Promise(r => setTimeout(r, 800)) // simulate API
-
-        const demo = DEMO_USERS[email.toLowerCase()]
-        if (demo && demo.password === password) {
-          const { password: _, ...user } = demo
-          void _
-          set({ user, isLoading: false })
-        } else {
+        try {
+          const data = await authApi.login(identifier, password)
+          set({ 
+            user: mapApiUser(data.user),
+            token: data.token,
+            isLoading: false 
+          })
+        } catch (error: any) {
           set({ isLoading: false })
-          throw new Error('Invalid credentials')
+          throw error
         }
       },
 
-      logout: () => set({ user: null }),
+      register: async (name: string, email: string, password: string, username: string) => {
+        set({ isLoading: true })
+        try {
+          const data = await authApi.register(name, email, password, username)
+          set({
+            user: mapApiUser(data.user),
+            token: data.token,
+            isLoading: false,
+          })
+        } catch (error: any) {
+          set({ isLoading: false })
+          throw error
+        }
+      },
 
-      initDemoUser: () => {
-        // Auto-login for demo — removes on real app
+      logout: () => {
+        set({ user: null, token: null })
+      },
+
+      updateUser: (updates: Partial<User>) => {
+        set((state) => ({
+          user: state.user ? { ...state.user, ...updates } : null,
+        }))
       },
     }),
     { name: 'local-music-auth' }

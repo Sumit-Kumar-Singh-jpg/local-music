@@ -11,7 +11,7 @@ Our mission is to make high-quality music streaming accessible to everyone, ever
 
 ## 🏗️ Project Structure
 ```
-local-music/
+./
 ├── apps/
 │   ├── web/        # React + Vite web player (Frontend)
 │   ├── mobile/     # Expo React Native app (Frontend)
