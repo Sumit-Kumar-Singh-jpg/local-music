@@ -3,7 +3,7 @@
  * eventually mobile (WebSocket/SSE when backend adds it).
  */
 export interface SyncEvent {
-  type: 'PLAY' | 'PAUSE' | 'SEEK' | 'TRACK_CHANGE' | 'VOLUME' | 'HEARTBEAT' | 'DISCONNECT'
+  type: 'PLAY' | 'PAUSE' | 'SEEK' | 'TRACK_CHANGE' | 'VOLUME' | 'HEARTBEAT' | 'DISCONNECT' | 'TRANSFER'
   payload: {
     trackId?: string
     trackTitle?: string

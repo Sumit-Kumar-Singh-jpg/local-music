@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useSyncStore, MY_DEVICE_ID, MY_DEVICE_NAME } from '../../store/syncStore'
+import { useSyncStore, MY_DEVICE_ID } from '../../store/syncStore'
 import { usePlayerStore } from '../../store/playerStore'
 import type { ConnectedDevice } from '../../../../packages/shared/src/types/sync'
 import './DeviceSync.css'
@@ -19,7 +19,7 @@ function DeviceCard({
   isCurrent: boolean
   onTransfer?: () => void
 }) {
-  const elapsed = Date.now() - device.lastSeen
+  const elapsed  = Date.now() - device.lastSeen
   const isRecent = elapsed < 12_000
 
   return (
@@ -55,11 +55,18 @@ interface DeviceSyncProps {
 }
 
 export default function DeviceSync({ onClose }: DeviceSyncProps) {
-  const { connectedDevices, isSyncEnabled, toggleSync, transferTo, setDeviceName } = useSyncStore()
+  // ← Read myDeviceName from STORE (reactive), not the module constant
+  const { connectedDevices, isSyncEnabled, myDeviceName, toggleSync, transferTo, setDeviceName } = useSyncStore()
   const { track, isPlaying } = usePlayerStore()
+
   const [editingName, setEditingName] = useState(false)
-  const [nameInput, setNameInput] = useState(MY_DEVICE_NAME)
+  // ← Initialise input from reactive store value
+  const [nameInput, setNameInput] = useState(myDeviceName)
+  const [transferMsg, setTransferMsg] = useState<string | null>(null)
   const panelRef = useRef<HTMLDivElement>(null)
+
+  // Sync nameInput when store changes (e.g. after save)
+  useEffect(() => { setNameInput(myDeviceName) }, [myDeviceName])
 
   // Close on outside click
   useEffect(() => {
@@ -72,10 +79,10 @@ export default function DeviceSync({ onClose }: DeviceSyncProps) {
     return () => document.removeEventListener('mousedown', handler)
   }, [onClose])
 
-  // My device as a ConnectedDevice object for display
+  // My device object for display
   const myDevice: ConnectedDevice = {
     deviceId: MY_DEVICE_ID,
-    deviceName: MY_DEVICE_NAME,
+    deviceName: myDeviceName,        // ← reactive
     platform: 'web',
     lastSeen: Date.now(),
     currentTrack: track
@@ -83,18 +90,37 @@ export default function DeviceSync({ onClose }: DeviceSyncProps) {
       : undefined,
   }
 
-  const otherDevices = connectedDevices.filter(d => d.deviceId !== MY_DEVICE_ID)
-  const totalDevices = 1 + otherDevices.length
+  const otherDevices  = connectedDevices.filter(d => d.deviceId !== MY_DEVICE_ID)
+  const totalDevices  = 1 + otherDevices.length
+
+  const handleSave = () => {
+    const trimmed = nameInput.trim()
+    if (!trimmed) return
+    setDeviceName(trimmed)           // persists to localStorage + updates store
+    setEditingName(false)
+  }
+
+  const handleTransfer = (deviceId: string, deviceName: string) => {
+    transferTo(deviceId)
+    setTransferMsg(`Playback transferred to ${deviceName}`)
+    setTimeout(() => setTransferMsg(null), 3000)
+  }
 
   return (
     <div className="device-sync-overlay">
       <div className="device-sync-panel glass-heavy" ref={panelRef}>
+
+        {/* Transfer toast */}
+        {transferMsg && (
+          <div className="transfer-toast">
+            ✅ {transferMsg}
+          </div>
+        )}
+
         {/* Header */}
         <div className="device-sync-header">
           <div>
-            <h2 className="device-sync-title">
-              📱 Devices & Sync
-            </h2>
+            <h2 className="device-sync-title">📱 Devices &amp; Sync</h2>
             <p className="device-sync-subtitle text-secondary">
               {totalDevices} device{totalDevices !== 1 ? 's' : ''} connected
             </p>
@@ -130,7 +156,7 @@ export default function DeviceSync({ onClose }: DeviceSyncProps) {
                 key={d.deviceId}
                 device={d}
                 isCurrent={false}
-                onTransfer={() => transferTo(d.deviceId)}
+                onTransfer={() => handleTransfer(d.deviceId, d.deviceName)}
               />
             ))
           ) : (
@@ -155,6 +181,10 @@ export default function DeviceSync({ onClose }: DeviceSyncProps) {
                 className="input-glass"
                 value={nameInput}
                 onChange={e => setNameInput(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') handleSave()
+                  if (e.key === 'Escape') setEditingName(false)
+                }}
                 style={{ flex: 1, fontSize: '0.875rem', padding: '8px 12px' }}
                 autoFocus
                 maxLength={30}
@@ -162,17 +192,14 @@ export default function DeviceSync({ onClose }: DeviceSyncProps) {
               <button
                 className="btn-primary btn"
                 style={{ padding: '8px 16px', fontSize: '0.875rem' }}
-                onClick={() => {
-                  setDeviceName(nameInput)
-                  setEditingName(false)
-                }}
+                onClick={handleSave}
               >
                 Save
               </button>
               <button
                 className="btn-glass btn"
                 style={{ padding: '8px 12px', fontSize: '0.875rem' }}
-                onClick={() => setEditingName(false)}
+                onClick={() => { setNameInput(myDeviceName); setEditingName(false) }}
               >
                 Cancel
               </button>
@@ -180,17 +207,17 @@ export default function DeviceSync({ onClose }: DeviceSyncProps) {
           ) : (
             <button
               className="btn-glass btn"
-              style={{ fontSize: '0.875rem', padding: '8px 14px' }}
-              onClick={() => setEditingName(true)}
+              style={{ fontSize: '0.875rem', padding: '8px 14px', gap: 8 }}
+              onClick={() => { setNameInput(myDeviceName); setEditingName(true) }}
             >
-              ✏ {MY_DEVICE_NAME}
+              ✏️ {myDeviceName}   {/* ← reads from reactive store */}
             </button>
           )}
         </div>
 
-        {/* Info footer */}
+        {/* Footer */}
         <p className="text-secondary" style={{ fontSize: '0.75rem', textAlign: 'center', marginTop: 8, lineHeight: 1.5 }}>
-          Sync works across browser tabs using BroadcastChannel.
+          Sync works across browser tabs using BroadcastChannel API.<br />
           Mobile app sync coming soon via WebSocket 🚀
         </p>
       </div>

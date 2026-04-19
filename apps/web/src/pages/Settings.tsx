@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import { useAuthStore } from '../store/authStore'
-import { useSyncStore, MY_DEVICE_NAME } from '../store/syncStore'
+import { useSyncStore } from '../store/syncStore'
 import DeviceSync from '../components/ui/DeviceSync'
 
 const SETTINGS_SECTIONS = ['Account', 'Devices & Sync', 'Playback', 'Audio Quality', 'Downloads', 'Appearance', 'Notifications', 'Privacy']
 
 export default function Settings() {
   const { user } = useAuthStore()
-  const { connectedDevices, isSyncEnabled } = useSyncStore()
+  const { connectedDevices, isSyncEnabled, myDeviceName } = useSyncStore()
   const [activeSection, setActiveSection] = useState('Account')
   const [showDeviceSync, setShowDeviceSync] = useState(false)
   const totalDevices = 1 + connectedDevices.length
@@ -117,7 +117,7 @@ export default function Settings() {
               <h2 style={{ fontWeight: 700, fontSize: '1rem', marginBottom: 16 }}>This Device</h2>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#A855F7', boxShadow: '0 0 8px rgba(168,85,247,0.6)', flexShrink: 0, display: 'inline-block' }} />
-                <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>🌐 {MY_DEVICE_NAME}</span>
+                <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>🌐 {myDeviceName}</span>
                 <span className="badge" style={{ background: 'rgba(168,85,247,0.15)', color: 'var(--color-primary)', fontSize: '0.65rem' }}>CURRENT</span>
               </div>
             </div>
