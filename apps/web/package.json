@@ -3,15 +3,17 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --host",
     "build": "vite build",
     "preview": "vite preview"
   },
   "dependencies": {
+    "@local-music/shared": "*",
+    "@local-music/ui": "*",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "@local-music/shared": "*",
-    "@local-music/ui": "*"
+    "react-router-dom": "^7.14.1",
+    "zustand": "^5.0.12"
   },
   "devDependencies": {
     "@types/react": "^18.2.0",

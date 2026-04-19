@@ -1,16 +1,43 @@
 import { useState } from 'react'
 import { useAuthStore } from '../store/authStore'
+import { userApi } from '../lib/api'
 import { useSyncStore } from '../store/syncStore'
 import DeviceSync from '../components/ui/DeviceSync'
 
-const SETTINGS_SECTIONS = ['Account', 'Devices & Sync', 'Playback', 'Audio Quality', 'Downloads', 'Appearance', 'Notifications', 'Privacy']
+const SETTINGS_SECTIONS = ['Account', 'Devices & Sync', 'Playback', 'Appearance']
 
 export default function Settings() {
-  const { user } = useAuthStore()
+  const { user, updateUser, logout } = useAuthStore()
   const { connectedDevices, isSyncEnabled, myDeviceName } = useSyncStore()
   const [activeSection, setActiveSection] = useState('Account')
+  const [displayName, setDisplayName] = useState(user?.name || '')
+  const [saving, setSaving] = useState(false)
+  const [saveMsg, setSaveMsg] = useState('')
+  const [accentColor, setAccentColor] = useState('#A855F7')
   const [showDeviceSync, setShowDeviceSync] = useState(false)
   const totalDevices = 1 + connectedDevices.length
+
+  const handleSave = async () => {
+    setSaving(true)
+    setSaveMsg('')
+    try {
+      const res = await userApi.updateProfile({ displayName })
+      updateUser({
+        name: res.user.profile?.displayName || displayName,
+      })
+      setSaveMsg('Saved successfully!')
+    } catch (err: any) {
+      setSaveMsg(err.message || 'Failed to save')
+    }
+    setSaving(false)
+    setTimeout(() => setSaveMsg(''), 3000)
+  }
+
+  const handleColorChange = (color: string) => {
+    setAccentColor(color)
+    document.documentElement.style.setProperty('--color-primary', color)
+    localStorage.setItem('accent-color', color)
+  }
 
   return (
     <div className="fade-in" style={{ display: 'flex', gap: 32 }}>
@@ -41,6 +68,17 @@ export default function Settings() {
             )}
           </button>
         ))}
+        <div style={{ borderTop: '1px solid var(--glass-border)', margin: '12px 0' }} />
+        <button
+          onClick={logout}
+          style={{
+            width: '100%', border: 'none', background: 'transparent', textAlign: 'left',
+            cursor: 'pointer', padding: '10px 12px', borderRadius: 'var(--radius-md)',
+            color: '#EF4444', fontFamily: 'inherit', fontSize: '0.9rem', fontWeight: 500, display: 'block',
+          }}
+        >
+          Log Out
+        </button>
       </div>
 
       {/* Content */}
@@ -55,48 +93,60 @@ export default function Settings() {
             <div className="glass" style={{ borderRadius: 'var(--radius-xl)', padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
               <h2 style={{ fontWeight: 700, fontSize: '1.125rem' }}>Profile</h2>
               <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 8 }}>
-                <img src={user?.avatar} alt={user?.name} style={{ width: 72, height: 72, borderRadius: '50%', border: '3px solid', borderColor: 'var(--color-primary)' }} />
-                <button className="btn-glass btn" style={{ fontSize: '0.875rem', padding: '8px 16px' }}>Change Photo</button>
+                <img
+                  src={user?.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=default'}
+                  alt={user?.name}
+                  style={{ width: 72, height: 72, borderRadius: '50%', border: '3px solid', borderColor: 'var(--color-primary)' }}
+                />
+                <div>
+                  <div style={{ fontWeight: 700 }}>{user?.name}</div>
+                  <div className="text-secondary" style={{ fontSize: '0.85rem' }}>@{user?.username}</div>
+                </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--color-on-surface-variant)', marginBottom: 6 }}>Display Name</label>
-                  <input className="input-glass" defaultValue={user?.name} />
+                  <input className="input-glass" value={displayName} onChange={e => setDisplayName(e.target.value)} />
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--color-on-surface-variant)', marginBottom: 6 }}>Email</label>
                   <input className="input-glass" defaultValue={user?.email} readOnly style={{ opacity: 0.6 }} />
                 </div>
               </div>
-              <button className="btn-primary btn" style={{ alignSelf: 'flex-start', padding: '10px 24px' }}>Save Changes</button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                <button className="btn-primary btn" style={{ padding: '10px 24px' }} onClick={handleSave} disabled={saving}>
+                  {saving ? 'Saving...' : 'Save Changes'}
+                </button>
+                {saveMsg && <span style={{ fontSize: '0.85rem', color: saveMsg.includes('success') ? '#10B981' : '#EF4444' }}>{saveMsg}</span>}
+              </div>
             </div>
 
             {/* Subscription */}
             <div className="glass" style={{ borderRadius: 'var(--radius-xl)', padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <h2 style={{ fontWeight: 700, fontSize: '1.125rem' }}>Subscription</h2>
-                {user?.plan === 'free'
-                  ? <span className="badge" style={{ background: 'rgba(255,255,255,0.1)', color: 'var(--color-on-surface-variant)' }}>FREE</span>
-                  : <span className="badge badge-premium">Premium</span>
-                }
+                <span className={`badge ${user?.billingTier === 'patron' ? 'badge-premium' : ''}`}
+                  style={user?.billingTier !== 'patron' ? { background: 'rgba(255,255,255,0.1)', color: 'var(--color-on-surface-variant)' } : {}}>
+                  {user?.billingTier === 'patron' ? 'Premium' : 'Free'}
+                </span>
               </div>
               {['🎵 HiFi Lossless Audio', '📥 Offline Downloads', '📢 Ad-Free Experience', '🎧 Unlimited Skips', '📱 Multiple Devices'].map(f => (
                 <div key={f} style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--color-on-surface-variant)', fontSize: '0.9rem' }}>
                   <span style={{ color: 'var(--color-primary)' }}>✓</span> {f}
                 </div>
               ))}
-              {user?.plan === 'free' && (
+              {user?.billingTier !== 'patron' && (
                 <button className="btn-primary btn" style={{ width: '100%', padding: '14px', fontSize: '1rem', marginTop: 8 }}>
-                  ✨ Upgrade to Premium — $9.99/mo
+                  ✨ Upgrade to Premium — Coming Soon
                 </button>
               )}
             </div>
           </>
         )}
 
+        {/* NEW FEATURE: Devices & Sync from incoming */}
         {activeSection === 'Devices & Sync' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            {/* Overview card */}
             <div className="glass" style={{ borderRadius: 'var(--radius-xl)', padding: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
                 <h2 style={{ fontWeight: 700, fontSize: '1.125rem', marginBottom: 6 }}>Connected Devices</h2>
@@ -112,7 +162,6 @@ export default function Settings() {
               </button>
             </div>
 
-            {/* This device */}
             <div className="glass" style={{ borderRadius: 'var(--radius-xl)', padding: 24 }}>
               <h2 style={{ fontWeight: 700, fontSize: '1rem', marginBottom: 16 }}>This Device</h2>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -122,7 +171,6 @@ export default function Settings() {
               </div>
             </div>
 
-            {/* Other devices */}
             {connectedDevices.length > 0 && (
               <div className="glass" style={{ borderRadius: 'var(--radius-xl)', padding: 24 }}>
                 <h2 style={{ fontWeight: 700, fontSize: '1rem', marginBottom: 16 }}>Other Devices</h2>
@@ -140,7 +188,6 @@ export default function Settings() {
               </div>
             )}
 
-            {/* Coming soon: mobile sync */}
             <div className="glass" style={{ borderRadius: 'var(--radius-xl)', padding: 24, background: 'linear-gradient(135deg, rgba(168,85,247,0.08), rgba(236,72,153,0.05))' }}>
               <h2 style={{ fontWeight: 700, fontSize: '1rem', marginBottom: 8 }}>📱 Mobile App Sync</h2>
               <p style={{ color: 'var(--color-on-surface-variant)', fontSize: '0.875rem', lineHeight: 1.6 }}>
@@ -152,26 +199,43 @@ export default function Settings() {
           </div>
         )}
 
+        {activeSection === 'Playback' && (
+          <div className="glass" style={{ borderRadius: 'var(--radius-xl)', padding: 24 }}>
+            <h2 style={{ fontWeight: 700, fontSize: '1.125rem', marginBottom: 16 }}>Playback Settings</h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>Audio Quality</span>
+                <select className="input-glass" style={{ width: 160, padding: '6px 12px' }}>
+                  <option>Normal</option>
+                  <option>High</option>
+                  <option>Lossless</option>
+                </select>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>Crossfade</span>
+                <span className="text-secondary">Coming Soon</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>Gapless Playback</span>
+                <span className="text-secondary">Coming Soon</span>
+              </div>
+            </div>
+          </div>
+        )}
+
         {activeSection === 'Appearance' && (
           <div className="glass" style={{ borderRadius: 'var(--radius-xl)', padding: 24 }}>
             <h2 style={{ fontWeight: 700, fontSize: '1.125rem', marginBottom: 16 }}>Accent Color</h2>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {['#A855F7', '#EC4899', '#3B82F6', '#10B981', '#F59E0B', '#EF4444'].map(color => (
-                <div key={color} style={{
+                <div key={color} onClick={() => handleColorChange(color)} style={{
                   width: 36, height: 36, borderRadius: '50%', background: color, cursor: 'pointer',
-                  border: color === '#A855F7' ? '3px solid white' : '3px solid transparent',
+                  border: color === accentColor ? '3px solid white' : '3px solid transparent',
                   transition: 'var(--transition)',
                 }} />
               ))}
             </div>
-          </div>
-        )}
-
-        {!['Account', 'Devices & Sync', 'Appearance'].includes(activeSection) && (
-          <div className="glass" style={{ borderRadius: 'var(--radius-xl)', padding: 40, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
-            <span style={{ fontSize: '2.5rem' }}>🚧</span>
-            <p style={{ fontWeight: 700 }}>{activeSection} settings coming soon</p>
-            <p className="text-secondary" style={{ fontSize: '0.875rem' }}>This section is under development</p>
+            <p className="text-secondary" style={{ marginTop: 12, fontSize: '0.85rem' }}>Changes the primary accent color across the app</p>
           </div>
         )}
       </div>

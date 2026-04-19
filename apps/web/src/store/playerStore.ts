@@ -3,13 +3,15 @@ import { create } from 'zustand'
 export interface Track {
   id: string
   title: string
-  artist: string
-  album: string
+  artist: string | { name: string; id?: string }
+  album: string | { title?: string; coverArt?: string; id?: string }
   duration: number // seconds
-  cover: string
+  cover?: string
   audioUrl?: string
   explicit?: boolean
+  isExplicit?: boolean
   hifi?: boolean
+  playCount?: number
 }
 
 interface PlayerState {
@@ -35,16 +37,10 @@ interface PlayerState {
   toggleMute: () => void
 }
 
-export const DEMO_TRACKS: Track[] = [
-  { id: '1', title: 'Midnight City',     artist: 'M83',          album: "Hurry Up, We're Dreaming", duration: 244, cover: 'https://picsum.photos/seed/t1/300/300', explicit: false, hifi: true  },
-  { id: '2', title: 'Blinding Lights',   artist: 'The Weeknd',   album: 'After Hours',               duration: 200, cover: 'https://picsum.photos/seed/t2/300/300', explicit: false, hifi: true  },
-  { id: '3', title: 'Save Your Tears',   artist: 'The Weeknd',   album: 'After Hours',               duration: 215, cover: 'https://picsum.photos/seed/t3/300/300', explicit: false, hifi: false },
-  { id: '4', title: 'Levitating',        artist: 'Dua Lipa',     album: 'Future Nostalgia',          duration: 203, cover: 'https://picsum.photos/seed/t4/300/300', explicit: false, hifi: true  },
-  { id: '5', title: 'Stay',              artist: 'The Kid LAROI', album: 'F*ck Love 3',              duration: 141, cover: 'https://picsum.photos/seed/t5/300/300', explicit: true,  hifi: false },
-  { id: '6', title: 'Heat Waves',        artist: 'Glass Animals', album: 'Dreamland',                duration: 238, cover: 'https://picsum.photos/seed/t6/300/300', explicit: false, hifi: true  },
-  { id: '7', title: 'As It Was',         artist: 'Harry Styles',  album: "Harry's House",            duration: 167, cover: 'https://picsum.photos/seed/t7/300/300', explicit: false, hifi: true  },
-  { id: '8', title: 'Anti-Hero',         artist: 'Taylor Swift',  album: 'Midnights',                duration: 200, cover: 'https://picsum.photos/seed/t8/300/300', explicit: false, hifi: true  },
-]
+export const DEMO_TRACKS: Track[] = []
+
+const audioEl = new Audio()
+audioEl.crossOrigin = 'anonymous'
 
 // Lazy import to avoid circular deps — syncStore uses playerStore state but not the store itself
 function syncPublish(type: string, payload: Record<string, unknown>) {
@@ -58,7 +54,7 @@ function syncPublish(type: string, payload: Record<string, unknown>) {
 
 export const usePlayerStore = create<PlayerState>((set, get) => ({
   track: null,
-  queue: DEMO_TRACKS,
+  queue: [],
   isPlaying: false,
   progress: 0,
   volume: 0.8,
@@ -67,38 +63,46 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   isMuted: false,
 
   play: (track, queue) => {
+    if (track.audioUrl) {
+      audioEl.src = track.audioUrl
+      audioEl.play().catch(console.error)
+    }
     set({ track, queue: queue ?? get().queue, isPlaying: true, progress: 0 })
     syncPublish('TRACK_CHANGE', {
       trackId: track.id,
       trackTitle: track.title,
-      trackArtist: track.artist,
+      trackArtist: typeof track.artist === 'string' ? track.artist : track.artist?.name,
       trackCover: track.cover,
       progress: 0,
     })
   },
 
   pause: () => {
+    audioEl.pause()
     set({ isPlaying: false })
     syncPublish('PAUSE', { progress: get().progress })
   },
 
   resume: () => {
+    audioEl.play().catch(console.error)
     set({ isPlaying: true })
     const t = get().track
-    if (t) syncPublish('PLAY', { trackId: t.id, trackTitle: t.title, trackArtist: t.artist, trackCover: t.cover, progress: get().progress })
+    if (t) syncPublish('PLAY', {
+      trackId: t.id,
+      trackTitle: t.title,
+      trackArtist: typeof t.artist === 'string' ? t.artist : t.artist?.name,
+      trackCover: t.cover,
+      progress: get().progress,
+    })
   },
 
   togglePlay: () => {
     const { isPlaying, track, queue } = get()
     if (!track && queue.length > 0) {
-      set({ track: queue[0], isPlaying: true })
-      syncPublish('TRACK_CHANGE', { trackId: queue[0].id, trackTitle: queue[0].title, trackArtist: queue[0].artist, trackCover: queue[0].cover, progress: 0 })
+      get().play(queue[0], queue)
     } else {
-      set({ isPlaying: !isPlaying })
-      if (track) {
-        if (!isPlaying) syncPublish('PLAY', { trackId: track.id, trackTitle: track.title, trackArtist: track.artist, trackCover: track.cover, progress: get().progress })
-        else           syncPublish('PAUSE', { progress: get().progress })
-      }
+      if (isPlaying) get().pause()
+      else get().resume()
     }
   },
 
@@ -109,8 +113,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     const next = shuffle
       ? queue[Math.floor(Math.random() * queue.length)]
       : queue[(idx + 1) % queue.length]
-    set({ track: next, progress: 0, isPlaying: true })
-    syncPublish('TRACK_CHANGE', { trackId: next.id, trackTitle: next.title, trackArtist: next.artist, trackCover: next.cover, progress: 0 })
+    get().play(next, queue)
   },
 
   prev: () => {
@@ -118,16 +121,19 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     if (!track || queue.length === 0) return
     const idx = queue.findIndex(t => t.id === track.id)
     const prev = queue[(idx - 1 + queue.length) % queue.length]
-    set({ track: prev, progress: 0, isPlaying: true })
-    syncPublish('TRACK_CHANGE', { trackId: prev.id, trackTitle: prev.title, trackArtist: prev.artist, trackCover: prev.cover, progress: 0 })
+    get().play(prev, queue)
   },
 
   seek: (progress) => {
+    if (audioEl.duration) {
+      audioEl.currentTime = progress * audioEl.duration
+    }
     set({ progress })
     syncPublish('SEEK', { progress })
   },
 
   setVolume: (volume) => {
+    audioEl.volume = volume
     set({ volume, isMuted: volume === 0 })
     syncPublish('VOLUME', { volume })
   },
@@ -142,3 +148,13 @@ export function formatTime(seconds: number): string {
   const s = Math.floor(seconds % 60)
   return `${m}:${s.toString().padStart(2, '0')}`
 }
+
+audioEl.addEventListener('timeupdate', () => {
+  if (audioEl.duration) {
+    usePlayerStore.setState({ progress: audioEl.currentTime / audioEl.duration })
+  }
+})
+
+audioEl.addEventListener('ended', () => {
+  usePlayerStore.getState().next()
+})
