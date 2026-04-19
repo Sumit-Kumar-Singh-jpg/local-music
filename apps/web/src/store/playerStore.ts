@@ -3,13 +3,15 @@ import { create } from 'zustand'
 export interface Track {
   id: string
   title: string
-  artist: string
-  album: string
+  artist: string | { name: string; id?: string }
+  album: string | { title?: string; coverArt?: string; id?: string }
   duration: number // seconds
-  cover: string
+  cover?: string
   audioUrl?: string
   explicit?: boolean
+  isExplicit?: boolean
   hifi?: boolean
+  playCount?: number
 }
 
 interface PlayerState {
@@ -40,10 +42,19 @@ export const DEMO_TRACKS: Track[] = []
 const audioEl = new Audio()
 audioEl.crossOrigin = 'anonymous'
 
+// Lazy import to avoid circular deps — syncStore uses playerStore state but not the store itself
+function syncPublish(type: string, payload: Record<string, unknown>) {
+  try {
+    // Dynamic import at runtime avoids circular dependency at module load time
+    import('./syncStore').then(({ useSyncStore }) => {
+      useSyncStore.getState().publish({ type: type as any, payload })
+    })
+  } catch { /* sync not available */ }
+}
 
 export const usePlayerStore = create<PlayerState>((set, get) => ({
   track: null,
-  queue: DEMO_TRACKS,
+  queue: [],
   isPlaying: false,
   progress: 0,
   volume: 0.8,
@@ -57,15 +68,34 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       audioEl.play().catch(console.error)
     }
     set({ track, queue: queue ?? get().queue, isPlaying: true, progress: 0 })
+    syncPublish('TRACK_CHANGE', {
+      trackId: track.id,
+      trackTitle: track.title,
+      trackArtist: typeof track.artist === 'string' ? track.artist : track.artist?.name,
+      trackCover: track.cover,
+      progress: 0,
+    })
   },
-  pause:  () => {
+
+  pause: () => {
     audioEl.pause()
     set({ isPlaying: false })
+    syncPublish('PAUSE', { progress: get().progress })
   },
+
   resume: () => {
     audioEl.play().catch(console.error)
     set({ isPlaying: true })
+    const t = get().track
+    if (t) syncPublish('PLAY', {
+      trackId: t.id,
+      trackTitle: t.title,
+      trackArtist: typeof t.artist === 'string' ? t.artist : t.artist?.name,
+      trackCover: t.cover,
+      progress: get().progress,
+    })
   },
+
   togglePlay: () => {
     const { isPlaying, track, queue } = get()
     if (!track && queue.length > 0) {
@@ -83,7 +113,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     const next = shuffle
       ? queue[Math.floor(Math.random() * queue.length)]
       : queue[(idx + 1) % queue.length]
-    set({ track: next, progress: 0, isPlaying: true })
+    get().play(next, queue)
   },
 
   prev: () => {
@@ -99,14 +129,18 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       audioEl.currentTime = progress * audioEl.duration
     }
     set({ progress })
+    syncPublish('SEEK', { progress })
   },
+
   setVolume: (volume) => {
     audioEl.volume = volume
     set({ volume, isMuted: volume === 0 })
+    syncPublish('VOLUME', { volume })
   },
-  toggleShuffle: ()        => set(s => ({ shuffle: !s.shuffle })),
-  toggleRepeat: ()         => set(s => ({ repeat: s.repeat === 'off' ? 'all' : s.repeat === 'all' ? 'one' : 'off' })),
-  toggleMute:   ()         => set(s => ({ isMuted: !s.isMuted })),
+
+  toggleShuffle: () => set(s => ({ shuffle: !s.shuffle })),
+  toggleRepeat:  () => set(s => ({ repeat: s.repeat === 'off' ? 'all' : s.repeat === 'all' ? 'one' : 'off' })),
+  toggleMute:    () => set(s => ({ isMuted: !s.isMuted })),
 }))
 
 export function formatTime(seconds: number): string {

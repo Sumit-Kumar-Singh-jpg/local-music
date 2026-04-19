@@ -110,3 +110,29 @@
   flex: none !important;
   width: 90px !important;
 }
+
+/* Device Sync */
+.device-sync-btn {
+  position: relative;
+}
+.device-sync-btn.has-devices {
+  color: var(--color-primary);
+}
+.device-count-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 16px;
+  height: 16px;
+  border-radius: var(--radius-full);
+  background: var(--grad-primary);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 8px rgba(168,85,247,0.5);
+  pointer-events: none;
+}
+
