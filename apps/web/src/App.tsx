@@ -1,5 +1,7 @@
+import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore } from './store/authStore'
+import { useSyncStore } from './store/syncStore'
 
 // Layouts
 import AppShell from './components/layout/AppShell'
@@ -73,6 +75,14 @@ class ErrorBoundary extends React.Component<
 }
 
 export default function App() {
+  const initSync = useSyncStore(s => s.init)
+  const destroySync = useSyncStore(s => s.destroy)
+
+  useEffect(() => {
+    initSync()
+    return () => destroySync()
+  }, [initSync, destroySync])
+
   return (
     <ErrorBoundary>
     <BrowserRouter>

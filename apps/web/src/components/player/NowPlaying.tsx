@@ -6,13 +6,13 @@ import DeviceSync from '../ui/DeviceSync'
 import './NowPlaying.css'
 
 /**
- * Robust HTMLAudioElement manager
+ * Robust HTMLAudioElement manager (The "Engine")
+ * Maps native audio events to our Spotify-like state machine.
  */
 function AudioEngine() {
-  const { track, isPlaying, volume, isMuted, progress, setProgress, next } = usePlayerStore()
+  const { track, isPlaying, volume, isMuted, progress, setProgress, setPlaybackState, next } = usePlayerStore()
   const audioRef = useRef<HTMLAudioElement>(null)
 
-  // Handle Event Subscriptions
   useEffect(() => {
     const audio = audioRef.current
     if (!audio) return
@@ -24,24 +24,48 @@ function AudioEngine() {
       if (!isNaN(p)) setProgress(p)
     }
 
+    const onPlay = () => setPlaybackState('playing')
+    const onPause = () => setPlaybackState('paused')
+    const onWaiting = () => setPlaybackState('buffering')
+    const onPlaying = () => setPlaybackState('playing')
     const onEnded = () => next()
+    const onError = () => {
+      console.error('[AudioEngine] Playback error for:', track?.title)
+      setPlaybackState('error')
+    }
 
     audio.addEventListener('timeupdate', onTimeUpdate)
+    audio.addEventListener('play', onPlay)
+    audio.addEventListener('pause', onPause)
+    audio.addEventListener('waiting', onWaiting)
+    audio.addEventListener('playing', onPlaying)
     audio.addEventListener('ended', onEnded)
+    audio.addEventListener('error', onError)
+
     return () => {
       audio.removeEventListener('timeupdate', onTimeUpdate)
+      audio.removeEventListener('play', onPlay)
+      audio.removeEventListener('pause', onPause)
+      audio.removeEventListener('waiting', onWaiting)
+      audio.removeEventListener('playing', onPlaying)
       audio.removeEventListener('ended', onEnded)
+      audio.removeEventListener('error', onError)
     }
-  }, [setProgress, next])
+  }, [setProgress, setPlaybackState, next, track?.title])
 
-  // Handle Play/Pause
+  // Handle Play/Pause Intents
   useEffect(() => {
     const audio = audioRef.current
     if (!audio) return
 
     if (isPlaying && track?.audioUrl) {
+      if (audio.src !== window.location.origin + track.audioUrl && !track.audioUrl.startsWith('http')) {
+         // Source changed
+      }
       audio.play().catch(err => {
-        console.warn('[AudioEngine] Playback prevented:', err.message)
+        if (err.name !== 'AbortError') {
+          console.warn('[AudioEngine] Playback prevented:', err.message)
+        }
       })
     } else {
       audio.pause()
@@ -54,7 +78,8 @@ function AudioEngine() {
     if (!audio || !audio.duration || isNaN(audio.duration)) return
     
     const targetTime = (progress || 0) * audio.duration
-    if (Math.abs(audio.currentTime - targetTime) > 2) {
+    // Only seek if the difference is significant (> 1s) to avoid micro-stutter
+    if (Math.abs(audio.currentTime - targetTime) > 1.5) {
       audio.currentTime = targetTime
     }
   }, [progress])
@@ -78,7 +103,8 @@ function AudioEngine() {
 
 export default function NowPlayingBar() {
   const {
-    track, isPlaying, progress, volume, shuffle, repeat, isMuted,
+    track, playbackState, progress, volume, shuffle, repeat, isMuted,
+    isSeeking, pendingProgress, setIsSeeking, setPendingProgress,
     togglePlay, next, prev, seek, setVolume, toggleShuffle, toggleRepeat, toggleMute,
   } = usePlayerStore()
   const { connectedDevices } = useSyncStore()
@@ -89,8 +115,27 @@ export default function NowPlayingBar() {
 
   if (!track) return <div className="now-playing-bar glass-heavy" />
 
-  const elapsed   = Math.floor((progress || 0) * (track.duration || 0))
+  const isPlaying = playbackState === 'playing'
+  const isBuffering = playbackState === 'buffering'
+  
+  // UI Progress: Use pending if seeking, otherwise real progress
+  const displayProgress = isSeeking ? pendingProgress : progress
+  const elapsed = Math.floor(displayProgress * (track.duration || 0))
   const volumeVal = isMuted ? 0 : (volume || 0.8)
+
+  const handleSeekStart = () => {
+    setIsSeeking(true)
+    setPendingProgress(progress)
+  }
+
+  const handleSeekChange = (val: number) => {
+    setPendingProgress(val)
+  }
+
+  const handleSeekEnd = (val: number) => {
+    setIsSeeking(false)
+    seek(val)
+  }
 
   return (
     <>
@@ -116,8 +161,8 @@ export default function NowPlayingBar() {
               title="Shuffle"
             >⇄</button>
             <button className="btn-icon" onClick={prev} title="Previous">⏮</button>
-            <button className="btn-play-large" onClick={togglePlay} title={isPlaying ? 'Pause' : 'Play'}>
-              {isPlaying ? '⏸' : '▶'}
+            <button className="btn-icon" style={{ background: 'var(--grad-primary)', color: '#fff', width: 40, height: 40, fontSize: '1rem', boxShadow: 'var(--shadow-glow-primary)' }} onClick={togglePlay} title={isPlaying ? 'Pause' : 'Play'}>
+              {isBuffering ? <div className="spinner-micro" /> : (isPlaying ? '⏸' : '▶')}
             </button>
             <button className="btn-icon" onClick={next} title="Next">⏭</button>
             <button
@@ -135,12 +180,17 @@ export default function NowPlayingBar() {
                 className="seek-bar-input"
                 min="0"
                 max="1"
-                step="0.001"
-                value={progress || 0}
-                onChange={(e) => seek(parseFloat(e.target.value))}
+                step="0.0001"
+                value={displayProgress}
+                onMouseDown={handleSeekStart}
+                onTouchStart={handleSeekStart}
+                onChange={(e) => handleSeekChange(parseFloat(e.target.value))}
+                onMouseUp={(e) => handleSeekEnd(parseFloat((e.target as HTMLInputElement).value))}
+                onTouchEnd={(e) => handleSeekEnd(parseFloat((e.target as HTMLInputElement).value))}
               />
               <div className="seek-bar-track">
-                <div className="seek-bar-fill" style={{ width: `${(progress || 0) * 100}%` }} />
+                <div className="seek-bar-fill" style={{ width: `${displayProgress * 100}%` }} />
+                {isBuffering && <div className="seek-bar-buffer-glow" />}
               </div>
             </div>
             <span className="now-playing-time">{formatTime(track.duration)}</span>

@@ -1,40 +1,62 @@
 /**
- * Shared Player Store
- * -------------------
- * Manages playback state, queue, and tracks.
+ * Spotify-like Player Store
+ * ------------------------
+ * Manages playback lifecycle, robust queue handling, and synchronized state.
  */
 
 import { create } from 'zustand'
 import { Track } from '../../../../packages/shared/src/types/track'
 
+export type PlaybackState = 'idle' | 'loading' | 'buffering' | 'playing' | 'paused' | 'ended' | 'error'
+export type RepeatMode = 'off' | 'all' | 'one'
+
 interface PlayerState {
+  // Core State
   track: Track | null
-  queue: Track[]
-  isPlaying: boolean
-  progress: number
+  originalQueue: Track[]  // Canonical order
+  playQueue: Track[]      // Active order (shuffled or original)
+  playbackState: PlaybackState
+  isPlaying: boolean      // Convenience alias for (playbackState === 'playing')
+  error: string | null
+  
+  // Timing & Position
+  progress: number        // 0.0 to 1.0 (Real time from engine)
+  isSeeking: boolean      // UI is currently dragging the slider
+  pendingProgress: number // Value currently being dragged to
+  
+  // Audio Settings
   volume: number
   isMuted: boolean
   shuffle: boolean
-  repeat: 'off' | 'all' | 'one'
+  repeat: RepeatMode
 
-  // Actions
+  // Actions: Transport
   play: (track: Track, queue?: Track[]) => void
   pause: () => void
   resume: () => void
   next: () => void
   prev: () => void
   togglePlay: () => void
+  seek: (progress: number) => void
+  
+  // Actions: Internal State Sync (Called by AudioEngine)
+  setPlaybackState: (state: PlaybackState) => void
+  setProgress: (progress: number) => void
+  reportError: (error: string, type?: string) => void
+  
+  // Actions: User Interaction
+  setIsSeeking: (seeking: boolean) => void
+  setPendingProgress: (progress: number) => void
   setVolume: (v: number) => void
   setMuted: (v: boolean) => void
   toggleMute: () => void
-  seek: (progress: number) => void
-  setProgress: (progress: number) => void
   toggleShuffle: () => void
   toggleRepeat: () => void
   setQueue: (queue: Track[]) => void
 }
 
-// Helper to normalize track data from different API types
+// ── Helpers ────────────────────────────────────────────────────────────────
+
 export const normalizeTrack = (raw: any): Track => {
   const id = raw.id || raw.trackId
   return {
@@ -55,29 +77,97 @@ export const formatTime = (seconds: number) => {
   return `${mins}:${secs.toString().padStart(2, '0')}`
 }
 
-export const getArtistName = (track: Track | null) => {
-  return track?.artistName || 'Unknown Artist'
+export const getArtistName = (track: Track | null) => track?.artistName || 'Unknown Artist'
+export const getCoverUrl = (track: Track | null) => track?.cover || `https://api.dicebear.com/7.x/shapes/svg?seed=${track?.id}`
+
+/**
+ * Fisher-Yates Shuffle
+ */
+function shuffleArray<T>(array: T[]): T[] {
+  const arr = [...array]
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]]
+  }
+  return arr
 }
 
-export const getCoverUrl = (track: Track | null) => {
-  return track?.cover || `https://api.dicebear.com/7.x/shapes/svg?seed=${track?.id}`
-}
+// ── Store Implementation ───────────────────────────────────────────────────
 
 export const usePlayerStore = create<PlayerState>((set, get) => ({
   track: null,
-  queue: [],
+  originalQueue: [],
+  playQueue: [],
+  playbackState: 'idle',
   isPlaying: false,
+  error: null,
   progress: 0,
+  isSeeking: false,
+  pendingProgress: 0,
   volume: 0.8,
   isMuted: false,
   shuffle: false,
   repeat: 'off',
 
+  setPlaybackState: (playbackState) => {
+    set({ playbackState, isPlaying: playbackState === 'playing' })
+  },
+
+  setProgress: (progress) => {
+    // Only update progress if NOT seeking to prevent UI jitter
+    if (!get().isSeeking) {
+      set({ progress })
+    }
+  },
+
+  reportError: (error, type = 'unspecified') => {
+    const { track, playbackState } = get()
+    console.error(`[Playback Telemetry] Error: ${error} Type: ${type} State: ${playbackState} Track: ${track?.id}`)
+    set({ playbackState: 'error', error })
+    
+    // Future: Send to /api/telemetry
+    if (track) {
+      fetch('/api/admin/telemetry', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          trackId: track.id,
+          error,
+          type,
+          userAgent: navigator.userAgent,
+          timestamp: new Date().toISOString(),
+        })
+      }).catch(() => {}) // Silent fail for telemetry
+    }
+  },
+
+  setIsSeeking: (isSeeking) => set({ isSeeking }),
+  setPendingProgress: (pendingProgress) => set({ pendingProgress }),
+
   play: (rawTrack, rawQueue) => {
     const track = normalizeTrack(rawTrack)
-    const queue = rawQueue ? rawQueue.map(normalizeTrack) : get().queue
+    let originalQueue = rawQueue ? rawQueue.map(normalizeTrack) : get().originalQueue
+    
+    // Ensure the track is in the queue
+    if (!originalQueue.find(t => t.id === track.id)) {
+      originalQueue = [track, ...originalQueue]
+    }
 
-    set({ track, queue, isPlaying: true, progress: 0 })
+    let playQueue = [...originalQueue]
+    if (get().shuffle) {
+      // Keep current track at front, shuffle rest
+      const others = originalQueue.filter(t => t.id !== track.id)
+      playQueue = [track, ...shuffleArray(others)]
+    }
+
+    set({ 
+      track, 
+      originalQueue, 
+      playQueue, 
+      playbackState: 'loading',
+      isPlaying: true, // Optimistically set playing to start engine
+      progress: 0 
+    })
     
     // Publish to Sync
     import('./syncStore').then(({ useSyncStore }) => {
@@ -96,92 +186,88 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   },
 
   pause: () => {
-    set({ isPlaying: false })
+    get().setPlaybackState('paused')
     import('./syncStore').then(({ useSyncStore }) => {
       useSyncStore.getState().publish({ type: 'PAUSE', payload: {} })
     })
   },
 
   resume: () => {
-    set({ isPlaying: true })
-    const track = get().track
-    if (track) {
-      import('./syncStore').then(({ useSyncStore }) => {
-        useSyncStore.getState().publish({
-          type: 'PLAY',
-          payload: {
-            trackId: track.id,
-            trackTitle: track.title,
-            trackArtist: track.artistName,
-            trackCover: track.cover,
-            duration: track.duration,
-            progress: get().progress
-          }
-        })
+    const { track } = get()
+    if (!track) return
+    
+    get().setPlaybackState('playing')
+    import('./syncStore').then(({ useSyncStore }) => {
+      useSyncStore.getState().publish({
+        type: 'PLAY',
+        payload: {
+          trackId: track.id,
+          trackTitle: track.title,
+          trackArtist: track.artistName,
+          trackCover: track.cover,
+          duration: track.duration,
+          progress: get().progress
+        }
       })
-    }
+    })
   },
 
   togglePlay: () => {
-    if (get().isPlaying) get().pause()
+    const { playbackState } = get()
+    if (playbackState === 'playing') get().pause()
     else if (get().track) get().resume()
   },
 
   next: () => {
-    const { track, queue, shuffle, repeat } = get()
-    if (!track || queue.length === 0) return
+    const { track, playQueue, repeat } = get()
+    if (!track || playQueue.length === 0) return
 
     if (repeat === 'one') {
-      get().play(track)
+      get().seek(0)
+      get().resume()
       return
     }
 
-    const currentIndex = queue.findIndex(t => t.id === track.id)
+    const currentIndex = playQueue.findIndex(t => t.id === track.id)
     let nextIndex = currentIndex + 1
 
-    if (shuffle) {
-      nextIndex = Math.floor(Math.random() * queue.length)
-    } else if (nextIndex >= queue.length) {
+    if (nextIndex >= playQueue.length) {
       if (repeat === 'all') nextIndex = 0
       else {
-        set({ isPlaying: false, progress: 0 })
+        get().setPlaybackState('ended')
         return
       }
     }
 
-    get().play(queue[nextIndex])
+    get().play(playQueue[nextIndex])
   },
 
   prev: () => {
-    const { track, queue, progress } = get()
-    if (!track || queue.length === 0) return
+    const { track, playQueue, progress } = get()
+    if (!track || playQueue.length === 0) return
 
-    if (progress > 0.05) {
-      get().play(track)
+    // Spotify rule: If more than 3 seconds in, restart the track
+    if (progress * track.duration > 3) {
+      get().seek(0)
       return
     }
 
-    const currentIndex = queue.findIndex(t => t.id === track.id)
+    const currentIndex = playQueue.findIndex(t => t.id === track.id)
     let prevIndex = currentIndex - 1
-    if (prevIndex < 0) prevIndex = queue.length - 1
+    
+    if (prevIndex < 0) {
+      if (get().repeat === 'all') prevIndex = playQueue.length - 1
+      else {
+        get().seek(0)
+        return
+      }
+    }
 
-    get().play(queue[prevIndex])
-  },
-
-  setVolume: (volume) => {
-    set({ volume, isMuted: volume === 0 })
-  },
-
-  setMuted: (isMuted) => {
-    set({ isMuted })
-  },
-
-  toggleMute: () => {
-    set(state => ({ isMuted: !state.isMuted }))
+    get().play(playQueue[prevIndex])
   },
 
   seek: (progress) => {
-    set({ progress })
+    set({ progress, pendingProgress: progress })
     import('./syncStore').then(({ useSyncStore }) => {
       useSyncStore.getState().publish({
         type: 'SEEK',
@@ -190,24 +276,39 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     })
   },
 
-  setProgress: (progress) => {
-    set({ progress })
+  setVolume: (volume) => {
+    set({ volume, isMuted: volume === 0 })
   },
 
+  setMuted: (isMuted) => set({ isMuted }),
+  toggleMute: () => set(state => ({ isMuted: !state.isMuted })),
+
   toggleShuffle: () => {
-    set(state => ({ shuffle: !state.shuffle }))
+    const { shuffle, track, originalQueue } = get()
+    const nextShuffle = !shuffle
+    
+    let nextPlayQueue = [...originalQueue]
+    if (nextShuffle && track) {
+      const others = originalQueue.filter(t => t.id !== track.id)
+      nextPlayQueue = [track, ...shuffleArray(others)]
+    }
+    
+    set({ shuffle: nextShuffle, playQueue: nextPlayQueue })
   },
 
   toggleRepeat: () => {
     set(state => {
-      const modes: ('off' | 'all' | 'one')[] = ['off', 'all', 'one']
-      const currentIdx = modes.indexOf(state.repeat)
-      const nextIdx = (currentIdx + 1) % modes.length
+      const modes: RepeatMode[] = ['off', 'all', 'one']
+      const nextIdx = (modes.indexOf(state.repeat) + 1) % modes.length
       return { repeat: modes[nextIdx] }
     })
   },
 
   setQueue: (queue) => {
-    set({ queue: queue.map(normalizeTrack) })
+    const normalized = queue.map(normalizeTrack)
+    set({ 
+      originalQueue: normalized, 
+      playQueue: get().shuffle ? shuffleArray(normalized) : normalized 
+    })
   }
 }))

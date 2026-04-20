@@ -1,9 +1,12 @@
-import { usePlayerStore, formatTime, getArtistName, getCoverUrl, getAlbumTitle } from '../store/playerStore'
+import { usePlayerStore, formatTime, getArtistName, getCoverUrl } from '../store/playerStore'
 import { useNavigate } from 'react-router-dom'
 import './NowPlaying.css'
 
 export default function NowPlaying() {
-  const { track, queue, isPlaying, progress, volume, shuffle, repeat, togglePlay, next, prev, seek, setVolume, toggleShuffle, toggleRepeat } = usePlayerStore()
+  const { 
+    track, originalQueue, playQueue, isPlaying, progress, volume, shuffle, repeat, 
+    togglePlay, next, prev, seek, setVolume, toggleShuffle, toggleRepeat 
+  } = usePlayerStore()
   const navigate = useNavigate()
 
   if (!track) {
@@ -21,10 +24,13 @@ export default function NowPlaying() {
 
   const duration = track.duration || 1; // Prevent division by zero
   const elapsed = Math.floor(progress * duration)
-  const upNext = queue.filter(t => t.id !== track.id).slice(0, 5)
+  // Show next tracks from playQueue
+  const currentIndex = playQueue.findIndex(t => t.id === track.id)
+  const upNext = playQueue.slice(currentIndex + 1, currentIndex + 6)
+  
   const coverImg = getCoverUrl(track)
-  const artistStr = getArtistName(track.artist)
-  const albumStr = getAlbumTitle(track.album)
+  const artistStr = track.artistName || 'Unknown Artist'
+  const albumStr = track.albumTitle || 'Single'
 
   return (
     <div className="np-page fade-in" style={{ backgroundImage: `url(${coverImg})` }}>
@@ -43,11 +49,11 @@ export default function NowPlaying() {
           {upNext.length > 0 ? (
             upNext.map(qt => (
               <div key={qt.id} className={`np-queue-item${qt.id === track.id ? ' active' : ''}`}
-                onClick={() => usePlayerStore.getState().play(qt, queue)}>
+                onClick={() => usePlayerStore.getState().play(qt, originalQueue)}>
                 <img src={getCoverUrl(qt)} alt={qt.title} className="np-queue-cover" />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div className="truncate" style={{ fontSize: '0.875rem', fontWeight: 500 }}>{qt.title}</div>
-                  <div className="text-secondary" style={{ fontSize: '0.75rem' }}>{getArtistName(qt.artist)}</div>
+                  <div className="text-secondary" style={{ fontSize: '0.75rem' }}>{getArtistName(qt)}</div>
                 </div>
               </div>
             ))
@@ -70,7 +76,7 @@ export default function NowPlaying() {
               onClick={e => { const r = e.currentTarget.getBoundingClientRect(); seek((e.clientX - r.left)/r.width) }}>
               <div className="seek-progress" style={{ width: `${progress * 100}%` }}><div className="seek-thumb" /></div>
             </div>
-            <span className="now-playing-time">{formatTime(duration)}</span>
+            <span className="now-playing-time">{formatTime(track.duration)}</span>
           </div>
 
           <div className="np-controls">
@@ -107,7 +113,7 @@ export default function NowPlaying() {
               <div className="text-secondary" style={{ fontSize: '0.75rem' }}>Duration</div>
               <div style={{ fontSize: '0.9rem' }}>{formatTime(duration)}</div>
             </div>
-            {track.explicit && (
+            {track.isExplicit && (
               <div>
                 <span className="badge badge-explicit">Explicit</span>
               </div>

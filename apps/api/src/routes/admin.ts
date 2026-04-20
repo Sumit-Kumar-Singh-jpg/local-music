@@ -270,4 +270,27 @@ export const adminRoutes = async (app: FastifyInstance) => {
 
     return { success: true, message: 'Song and file deleted successfully' };
   });
+
+  // Telemetry Ingestion (Public-ish but categorized under admin for reporting)
+  app.post('/telemetry', async (request, reply) => {
+    const telemetrySchema = z.object({
+      trackId: z.string().optional(),
+      error: z.string(),
+      type: z.string().optional(),
+      userAgent: z.string().optional(),
+      timestamp: z.string().optional(),
+    });
+
+    const data = telemetrySchema.parse(request.body);
+    
+    // Structured log for ELK/OpenSearch ingestion
+    app.log.error({
+      msg: 'Playback failure telemetry received',
+      ...data,
+      remoteIp: request.ip,
+      requestId: request.id,
+    });
+
+    return { received: true };
+  });
 };

@@ -69,7 +69,7 @@ export const useSyncStore = create<SyncState>((set, get) => ({
         import('./playerStore').then(({ usePlayerStore, normalizeTrack }) => {
           const store = usePlayerStore.getState()
           // Find the track in the current queue; fall back to event payload info
-          const trackData = store.queue.find(t => t.id === event.payload.trackId) ?? {
+          const trackData = store.playQueue.find(t => t.id === event.payload.trackId) ?? {
             id:         event.payload.trackId!,
             title:      event.payload.trackTitle  ?? 'Unknown Track',
             artistName: event.payload.trackArtist ?? 'Unknown Artist',

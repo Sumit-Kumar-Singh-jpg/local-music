@@ -26,7 +26,7 @@ export default function TopBar() {
 
       <div className="topbar-right">
         <ApiStatus />
-        {user?.plan === 'free' && (
+        {user?.plan === 'FREE' && (
           <Link to="/settings" className="btn-primary" style={{ padding: '6px 16px', fontSize: '0.8125rem' }}>
             Upgrade
           </Link>
