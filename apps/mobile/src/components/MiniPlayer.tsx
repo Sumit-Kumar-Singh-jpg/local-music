@@ -10,6 +10,7 @@ export default function MiniPlayer() {
   if (!track) return null
 
   const elapsed = Math.floor(progress * track.duration)
+  const artistText = track.artistName || 'Unknown Artist'
 
   return (
     <View style={styles.wrapper}>
@@ -31,7 +32,7 @@ export default function MiniPlayer() {
           {/* Info */}
           <View style={styles.info}>
             <Text style={styles.title} numberOfLines={1}>{track.title}</Text>
-            <Text style={styles.artist} numberOfLines={1}>{track.artist}</Text>
+            <Text style={styles.artist} numberOfLines={1}>{artistText}</Text>
           </View>
 
           {/* Controls */}

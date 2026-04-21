@@ -20,6 +20,7 @@ async function main() {
       username: 'nischay',
       passwordHash,
       role: 'ADMIN',
+      isApproved: true,
       profile: {
         create: {
           handle: 'nischay',
@@ -37,6 +38,7 @@ async function main() {
       username: 'sumit',
       passwordHash,
       role: 'ADMIN',
+      isApproved: true,
       profile: {
         create: {
           handle: 'sumit',

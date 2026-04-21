@@ -1,30 +1,41 @@
-import { useEffect } from 'react'
-import { Stack, router } from 'expo-router'
-import { StatusBar } from 'expo-status-bar'
+import { Drawer } from 'expo-router/drawer'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { useAuthStore } from '../src/store/authStore'
 import { colors } from '../src/theme/tokens'
+import '../src/services/playbackService' // Initialize playback logic
 
 export default function RootLayout() {
   const { user } = useAuthStore()
 
-  useEffect(() => {
-    if (!user) {
-      router.replace('/(auth)/login')
-    }
-  }, [user])
-
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.bg }}>
-      <StatusBar style="light" backgroundColor={colors.bg} />
-      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }}>
-        <Stack.Screen name="(auth)/login"  options={{ headerShown: false }} />
-        <Stack.Screen name="(tabs)"        options={{ headerShown: false }} />
-        <Stack.Screen name="player"        options={{ presentation: 'modal', headerShown: false }} />
-        <Stack.Screen name="album/[id]"    options={{ headerShown: false }} />
-        <Stack.Screen name="artist/[id]"   options={{ headerShown: false }} />
-        <Stack.Screen name="playlist/[id]" options={{ headerShown: false }} />
-      </Stack>
+      <Drawer
+        screenOptions={{
+          headerShown: false,
+          drawerStyle: {
+            backgroundColor: colors.bg,
+            width: 280,
+          },
+          drawerActiveTintColor: colors.primary,
+          drawerInactiveTintColor: colors.textMuted,
+          drawerType: 'front',
+        }}
+      >
+        <Drawer.Screen
+          name="(tabs)"
+          options={{
+            drawerLabel: 'Home',
+            headerShown: false,
+          }}
+        />
+        <Drawer.Screen
+          name="(auth)/login"
+          options={{
+            drawerItemStyle: { display: 'none' },
+            headerShown: false,
+          }}
+        />
+      </Drawer>
     </GestureHandlerRootView>
   )
 }

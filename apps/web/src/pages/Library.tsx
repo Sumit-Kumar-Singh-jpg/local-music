@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { usePlayerStore } from '../store/playerStore'
 import { musicApi, playlistApi } from '../lib/api'
+import { useModalStore } from '../store/modalStore'
 
 const FILTERS = ['All', 'Playlists', 'Albums', 'Artists']
 
@@ -24,13 +25,15 @@ export default function Library() {
     })
   }, [])
 
+  const { showPrompt, showAlert } = useModalStore()
   const handleCreate = () => {
-    const name = prompt('Enter playlist name:')
-    if (name) {
-      playlistApi.create(name).then(res => {
-        setPlaylists(prev => [res.playlist, ...prev])
-      }).catch(console.error)
-    }
+    showPrompt('New Playlist', 'Enter a name for your new playlist:', (name) => {
+      if (name) {
+        playlistApi.create(name).then(res => {
+          setPlaylists(prev => [res.playlist, ...prev])
+        }).catch(err => showAlert('Error', err.message))
+      }
+    })
   }
 
   const filteredPlaylists = playlists
@@ -59,45 +62,26 @@ export default function Library() {
         <p className="text-secondary">Loading your library...</p>
       ) : (
         <>
-          {filteredPlaylists.length > 0 && (
+          {playlists.length > 0 ? (
             <div className="cards-grid">
-              {filteredPlaylists.map(pl => (
-                <div key={pl.id} className="home-track-card glass" onClick={() => navigate(`/playlist/${pl.id}`)}>
-                  <div className="home-track-cover-wrap">
-                    <img src={pl.coverArt || 'https://picsum.photos/seed/' + pl.id + '/200/200'} alt={pl.name} className="home-track-cover" />
+              {playlists.map(pl => (
+                <div key={pl.id} className="home-track-card glass" style={{ padding: 16 }} onClick={() => navigate(`/playlist/${pl.id}`)}>
+                  <div className="home-track-cover-wrap" style={{ borderRadius: 'var(--radius-md)', overflow: 'hidden', aspectRatio: '1/1', marginBottom: 12 }}>
+                    <img src={pl.coverArt || 'https://picsum.photos/seed/' + pl.id + '/400/400'} alt={pl.name} className="home-track-cover" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     <div className="home-track-play-overlay">
-                      <span className="home-track-play-icon">▶</span>
+                      <span className="home-track-play-icon" style={{ fontSize: '2rem' }}>▶</span>
                     </div>
                   </div>
-                  <div className="home-track-title truncate">{pl.name}</div>
-                  <div className="home-track-artist">{pl.trackCount || 0} songs</div>
+                  <div className="home-track-title truncate" style={{ fontWeight: 600, fontSize: '1rem' }}>{pl.name}</div>
+                  <div className="home-track-artist" style={{ opacity: 0.6, fontSize: '0.85rem', marginTop: 4 }}>Playlist • {pl.trackCount || 0} songs</div>
                 </div>
               ))}
             </div>
-          )}
-
-          {recentTracks.length > 0 && (
-            <section style={{ marginTop: 48 }}>
-              <h2 className="section-title" style={{ marginBottom: 16 }}>Recently Added</h2>
-              {recentTracks.slice(0, 5).map((t, i) => (
-                <div key={t.id} className="track-row" onClick={() => play(t, recentTracks)}>
-                  <span className="track-num">{i+1}</span>
-                  <img src={t.album?.coverArt || t.cover || 'https://picsum.photos/200'} alt={t.title} className="track-thumb" />
-                  <div className="track-info">
-                    <div className="track-title">{t.title}</div>
-                    <div className="track-artist">{t.artist?.name || t.artist}</div>
-                  </div>
-                  <span className="text-secondary" style={{ fontSize: '0.815rem' }}>{t.album?.title || ''}</span>
-                  <span className="track-duration">{`${Math.floor(t.duration/60)}:${(t.duration%60).toString().padStart(2,'0')}`}</span>
-                </div>
-              ))}
-            </section>
-          )}
-
-          {filteredPlaylists.length === 0 && recentTracks.length === 0 && (
-            <div style={{ textAlign: 'center', padding: 60 }}>
-              <p className="text-secondary" style={{ fontSize: '1.1rem' }}>Your library is empty</p>
-              <p className="text-secondary" style={{ marginTop: 8 }}>Start liking songs and creating playlists!</p>
+          ) : (
+            <div style={{ textAlign: 'center', padding: '100px 60px' }} className="glass-low">
+              <p className="text-secondary" style={{ fontSize: '1.25rem', fontWeight: 500 }}>No Playlists Yet</p>
+              <p className="text-secondary" style={{ marginTop: 12, opacity: 0.7 }}>Create your first playlist to start organizing your music.</p>
+              <button className="btn-primary btn" style={{ marginTop: 32 }} onClick={handleCreate}>+ Create Playlist</button>
             </div>
           )}
         </>

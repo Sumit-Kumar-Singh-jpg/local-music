@@ -9,11 +9,12 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const token = authState?.state?.token
 
   const res = await fetch(`${BASE}${path}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
     ...options,
+    headers: {
+      ...(options?.body ? { 'Content-Type': 'application/json' } : {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(options?.headers || {}),
+    },
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({ message: res.statusText }))
@@ -47,6 +48,9 @@ export const authApi = {
 export const musicApi = {
   search: (q: string) =>
     request<{ results: any[] }>(`/search/tracks?q=${encodeURIComponent(q)}`),
+
+  suggestions: (q: string) =>
+    request<{ results: any[] }>(`/search/suggestions?q=${encodeURIComponent(q)}`),
 
   trending: () =>
     request<{ tracks: any[] }>('/music/trending'),
@@ -124,6 +128,45 @@ export const adminApi = {
 
   getUsers: (limit = 10) =>
     request<{ users: any[] }>(`/admin/users?limit=${limit}`),
+
+  approveUser: (id: string) =>
+    request<{ success: boolean; user: any }>(`/admin/users/${id}/approve`, {
+      method: 'POST',
+    }),
+
+  deleteUser: (id: string) =>
+    request<{ success: boolean }>(`/admin/users/${id}`, {
+      method: 'DELETE',
+    }),
+
+  deleteSong: (id: string) =>
+    request<{ success: boolean }>(`/admin/songs/${id}`, {
+      method: 'DELETE',
+    }),
+
+  addSong: (data: { source: string; url: string; trackMetadata: any }) =>
+    request<{ success: boolean; trackId: string }>('/admin/add-song', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  addPlaylist: (url: string) =>
+    request<{ success: boolean; message: string }>('/admin/add-playlist', {
+      method: 'POST',
+      body: JSON.stringify({ url }),
+    }),
+
+  getTasks: () =>
+    request<{ tasks: any[] }>('/admin/tasks'),
+
+  stopTask: (id: string) =>
+    request<{ success: boolean }>(`/admin/tasks/${id}/stop`, {
+      method: 'POST',
+      body: JSON.stringify({}),
+    }),
+
+  getContent: () =>
+    request<{ tracks: any[] }>('/admin/content'),
 }
 
 // ── Health ────────────────────────────────────────────────────────────────

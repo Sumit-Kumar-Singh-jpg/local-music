@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { SyncEvent, ConnectedDevice } from '../../../packages/shared/src/types/sync'
+import type { SyncEvent, ConnectedDevice } from '../../../../packages/shared/src/types/sync'
 
 // ── Device Identity ───────────────────────────────────────────────────────
 const DEVICE_ID_KEY  = 'lm-device-id'
@@ -66,18 +66,17 @@ export const useSyncStore = create<SyncState>((set, get) => ({
       // ── TRANSFER received — this tab was asked to start playing ──
       if (event.type === 'TRANSFER' && event.payload.trackId) {
         // Dynamically import playerStore to start playing the handed-off track
-        import('./playerStore').then(({ usePlayerStore }) => {
+        import('./playerStore').then(({ usePlayerStore, normalizeTrack }) => {
           const store = usePlayerStore.getState()
           // Find the track in the current queue; fall back to event payload info
-          const track = store.queue.find(t => t.id === event.payload.trackId) ?? {
-            id:       event.payload.trackId!,
-            title:    event.payload.trackTitle  ?? 'Unknown Track',
-            artist:   event.payload.trackArtist ?? 'Unknown Artist',
-            album:    '',
-            duration: event.payload.duration    ?? 0,
-            cover:    event.payload.trackCover  ?? '',
+          const trackData = store.playQueue.find(t => t.id === event.payload.trackId) ?? {
+            id:         event.payload.trackId!,
+            title:      event.payload.trackTitle  ?? 'Unknown Track',
+            artistName: event.payload.trackArtist ?? 'Unknown Artist',
+            duration:   event.payload.duration    ?? 0,
+            cover:      event.payload.trackCover  ?? '',
           }
-          store.play(track)
+          store.play(normalizeTrack(trackData))
         })
         return
       }
@@ -184,7 +183,7 @@ export const useSyncStore = create<SyncState>((set, get) => ({
         payload: {
           trackId:     track.id,
           trackTitle:  track.title,
-          trackArtist: track.artist,
+          trackArtist: track.artistName,
           trackCover:  track.cover,
           duration:    track.duration,
           progress,

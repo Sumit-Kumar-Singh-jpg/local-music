@@ -1,4 +1,8 @@
 import { prisma } from '../db/client';
+import { SongStorage } from '@prisma/client';
+
+const storageCache = new Map<string, SongStorage>();
+
 
 export class MusicService {
   static async getTrending(limit = 20) {
@@ -46,5 +50,19 @@ export class MusicService {
         },
       },
     });
+  }
+
+  static async getStorageCached(trackId: string): Promise<SongStorage | null> {
+    const cached = storageCache.get(trackId);
+    if (cached) return cached;
+
+    const storage = await prisma.songStorage.findUnique({
+      where: { trackId }
+    });
+
+    if (storage) {
+      storageCache.set(trackId, storage);
+    }
+    return storage;
   }
 }

@@ -1,9 +1,12 @@
-import { usePlayerStore, formatTime } from '../store/playerStore'
+import { usePlayerStore, formatTime, getArtistName, getCoverUrl } from '../store/playerStore'
 import { useNavigate } from 'react-router-dom'
 import './NowPlaying.css'
 
 export default function NowPlaying() {
-  const { track, queue, isPlaying, progress, volume, shuffle, repeat, togglePlay, next, prev, seek, setVolume, toggleShuffle, toggleRepeat } = usePlayerStore()
+  const { 
+    track, originalQueue, playQueue, isPlaying, progress, volume, shuffle, repeat, 
+    togglePlay, next, prev, seek, setVolume, toggleShuffle, toggleRepeat 
+  } = usePlayerStore()
   const navigate = useNavigate()
 
   if (!track) {
@@ -19,11 +22,18 @@ export default function NowPlaying() {
     )
   }
 
-  const elapsed = Math.floor(progress * track.duration)
-  const upNext = queue.filter(t => t.id !== track.id).slice(0, 5)
+  const duration = track.duration || 1; // Prevent division by zero
+  const elapsed = Math.floor(progress * duration)
+  // Show next tracks from playQueue
+  const currentIndex = playQueue.findIndex(t => t.id === track.id)
+  const upNext = playQueue.slice(currentIndex + 1, currentIndex + 6)
+  
+  const coverImg = getCoverUrl(track)
+  const artistStr = track.artistName || 'Unknown Artist'
+  const albumStr = track.albumTitle || 'Single'
 
   return (
-    <div className="np-page fade-in" style={{ backgroundImage: `url(${track.cover || track.album?.coverArt || ''})` }}>
+    <div className="np-page fade-in" style={{ backgroundImage: `url(${coverImg})` }}>
       <div className="np-bg-overlay" />
 
       <div className="np-topbar">
@@ -39,11 +49,11 @@ export default function NowPlaying() {
           {upNext.length > 0 ? (
             upNext.map(qt => (
               <div key={qt.id} className={`np-queue-item${qt.id === track.id ? ' active' : ''}`}
-                onClick={() => usePlayerStore.getState().play(qt, queue)}>
-                <img src={qt.cover || qt.album?.coverArt || 'https://picsum.photos/200'} alt={qt.title} className="np-queue-cover" />
+                onClick={() => usePlayerStore.getState().play(qt, originalQueue)}>
+                <img src={getCoverUrl(qt)} alt={qt.title} className="np-queue-cover" />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div className="truncate" style={{ fontSize: '0.875rem', fontWeight: 500 }}>{qt.title}</div>
-                  <div className="text-secondary" style={{ fontSize: '0.75rem' }}>{qt.artist?.name || qt.artist}</div>
+                  <div className="text-secondary" style={{ fontSize: '0.75rem' }}>{getArtistName(qt)}</div>
                 </div>
               </div>
             ))
@@ -54,10 +64,10 @@ export default function NowPlaying() {
 
         {/* Center: Player */}
         <div className="np-center">
-          <img src={track.cover || track.album?.coverArt || 'https://picsum.photos/400'} alt={track.title} className="np-album-art" />
+          <img src={coverImg} alt={track.title} className="np-album-art" />
           <div style={{ textAlign: 'center', marginBottom: 24 }}>
             <h2 style={{ fontSize: '2rem', fontWeight: 900, letterSpacing: '-0.03em' }}>{track.title}</h2>
-            <p style={{ color: 'var(--color-on-surface-variant)' }}>{track.artist?.name || track.artist}</p>
+            <p style={{ color: 'var(--color-on-surface-variant)' }}>{artistStr}</p>
           </div>
 
           <div className="np-seek">
@@ -97,13 +107,13 @@ export default function NowPlaying() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div>
               <div className="text-secondary" style={{ fontSize: '0.75rem' }}>Album</div>
-              <div style={{ fontSize: '0.9rem' }}>{track.album?.title || track.album || 'Single'}</div>
+              <div style={{ fontSize: '0.9rem' }}>{albumStr || 'Single'}</div>
             </div>
             <div>
               <div className="text-secondary" style={{ fontSize: '0.75rem' }}>Duration</div>
-              <div style={{ fontSize: '0.9rem' }}>{formatTime(track.duration)}</div>
+              <div style={{ fontSize: '0.9rem' }}>{formatTime(duration)}</div>
             </div>
-            {track.explicit && (
+            {track.isExplicit && (
               <div>
                 <span className="badge badge-explicit">Explicit</span>
               </div>

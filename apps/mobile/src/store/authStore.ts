@@ -1,52 +1,81 @@
 import { create } from 'zustand'
-
-export interface MobileUser {
-  id: string
-  name: string
-  email: string
-  avatar: string
-  role: 'admin' | 'user'
-  plan: 'free' | 'premium'
-}
+import { persist, createJSONStorage } from 'zustand/middleware'
+import AsyncStorage from '@react-native-async-storage/async-storage'
+import { authApi, setAuthToken } from '../lib/api'
+import { User } from '@local-music/shared/src/types/user'
 
 interface AuthState {
-  user: MobileUser | null
+  user: User | null
+  token: string | null
   isLoading: boolean
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>
+  register: (name: string, email: string, password: string, username: string) => Promise<{ success: boolean; error?: string }>
   logout: () => void
+  updateUser: (user: Partial<User>) => void
 }
 
-const DEMO_ACCOUNTS: Record<string, MobileUser & { password: string }> = {
-  'admin@localmusic.app': {
-    id: 'admin-1', name: 'Super Admin', email: 'admin@localmusic.app',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=admin',
-    role: 'admin', plan: 'premium', password: 'admin123',
-  },
-  'user@localmusic.app': {
-    id: 'user-1', name: 'Music Fan', email: 'user@localmusic.app',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=user',
-    role: 'user', plan: 'free', password: 'user123',
-  },
-}
+export const useAuthStore = create<AuthState>()(
+  persist(
+    (set, get) => ({
+      user: null,
+      token: null,
+      isLoading: false,
 
-export const useAuthStore = create<AuthState>((set) => ({
-  user: null,
-  isLoading: false,
+      login: async (email, password) => {
+        set({ isLoading: true })
+        try {
+          const data = await authApi.login(email, password)
+          setAuthToken(data.token)
+          set({ 
+            user: data.user, 
+            token: data.token,
+            isLoading: false 
+          })
+          return { success: true }
+        } catch (error: any) {
+          set({ isLoading: false })
+          return { success: false, error: error.message || 'Login failed' }
+        }
+      },
 
-  login: async (email, password) => {
-    set({ isLoading: true })
-    await new Promise(r => setTimeout(r, 600)) // simulate network
+      register: async (name, email, password, username) => {
+        set({ isLoading: true })
+        try {
+          const data = await authApi.register(name, email, password, username)
+          setAuthToken(data.token)
+          set({
+            user: data.user,
+            token: data.token,
+            isLoading: false
+          })
+          return { success: true }
+        } catch (error: any) {
+          set({ isLoading: false })
+          return { success: false, error: error.message || 'Registration failed' }
+        }
+      },
 
-    const account = DEMO_ACCOUNTS[email.toLowerCase()]
-    if (!account || account.password !== password) {
-      set({ isLoading: false })
-      return { success: false, error: 'Invalid email or password' }
+      logout: () => {
+        setAuthToken(null)
+        set({ user: null, token: null })
+        AsyncStorage.removeItem('local-music-auth')
+      },
+
+      updateUser: (updates) => {
+        const user = get().user
+        if (user) {
+          set({ user: { ...user, ...updates } })
+        }
+      }
+    }),
+    {
+      name: 'local-music-auth',
+      storage: createJSONStorage(() => AsyncStorage),
+      onRehydrateStorage: () => (state) => {
+        if (state?.token) {
+          setAuthToken(state.token)
+        }
+      }
     }
-
-    const { password: _, ...user } = account
-    set({ user, isLoading: false })
-    return { success: true }
-  },
-
-  logout: () => set({ user: null }),
-}))
+  )
+)

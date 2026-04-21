@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../../store/authStore'
+import { useUIStore } from '../../store/uiStore'
+import { useModalStore } from '../../store/modalStore'
 import { playlistApi } from '../../lib/api'
 import './Sidebar.css'
 
@@ -14,6 +16,8 @@ const PLAYLIST_COLORS = ['#A855F7', '#EC4899', '#3B82F6', '#10B981', '#F59E0B']
 
 export default function Sidebar() {
   const { user, logout } = useAuthStore()
+  const { sidebarCollapsed, toggleSidebar } = useUIStore()
+  const { showPrompt, showAlert } = useModalStore()
   const navigate = useNavigate()
   const [playlists, setPlaylists] = useState<any[]>([])
 
@@ -24,20 +28,41 @@ export default function Sidebar() {
   }, [])
 
   const handleCreatePlaylist = () => {
-    const name = prompt('Enter playlist name:')
-    if (name) {
-      playlistApi.create(name).then(res => {
-        setPlaylists(prev => [...prev, res.playlist])
-      }).catch(console.error)
-    }
+    showPrompt('New Playlist', 'Enter a name for your new playlist:', (name) => {
+      if (name) {
+        playlistApi.create(name).then(res => {
+          setPlaylists(prev => [...prev, res.playlist])
+        }).catch(err => showAlert('Error', err.message))
+      }
+    })
   }
 
+
   return (
-    <aside className="sidebar glass-low">
-      {/* Logo */}
-      <div className="sidebar-logo">
-        <span className="sidebar-logo-icon">♪</span>
-        <span className="sidebar-logo-text gradient-text">Local Music</span>
+    <aside className={`sidebar glass-heavy ${sidebarCollapsed ? 'collapsed' : ''}`} style={{ 
+      transition: 'var(--transition-slow)',
+      boxShadow: 'var(--shadow-lunar-lift)',
+      borderRight: 'var(--border-glass)'
+    }}>
+      {/* Logo & Toggle */}
+      <div className="sidebar-header" style={{ padding: '24px 20px' }}>
+        {!sidebarCollapsed && (
+          <div className="sidebar-logo" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div className="sidebar-logo-icon" style={{ 
+              width: 32, height: 32, borderRadius: 'var(--radius-sm)', 
+              background: 'var(--grad-primary)', display: 'flex', 
+              alignItems: 'center', justifyContent: 'center', color: '#fff',
+              fontSize: '1.25rem', fontWeight: 800
+            }}>♪</div>
+            <span className="sidebar-logo-text" style={{ 
+              fontSize: '1.25rem', fontWeight: 800, letterSpacing: '-0.02em',
+              background: 'var(--grad-text)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent'
+            }}>Local Music</span>
+          </div>
+        )}
+        <button className="btn-icon toggle-btn" onClick={toggleSidebar} title={sidebarCollapsed ? 'Expand' : 'Collapse'} style={{ opacity: 0.6 }}>
+          {sidebarCollapsed ? '»' : '«'}
+        </button>
       </div>
 
       {/* Main nav */}
@@ -48,9 +73,10 @@ export default function Sidebar() {
             to={item.to}
             end={item.to === '/'}
             className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}
+            title={sidebarCollapsed ? item.label : ''}
           >
             <span className="sidebar-link-icon">{item.icon}</span>
-            <span>{item.label}</span>
+            {!sidebarCollapsed && <span>{item.label}</span>}
           </NavLink>
         ))}
       </nav>
@@ -60,7 +86,7 @@ export default function Sidebar() {
       {/* Playlists */}
       <div className="sidebar-section">
         <div className="sidebar-section-header">
-          <span>Your Playlists</span>
+          {!sidebarCollapsed && <span>Your Playlists</span>}
           <button className="btn-icon" title="Create playlist" onClick={handleCreatePlaylist}>＋</button>
         </div>
         <div className="sidebar-playlists">
@@ -69,25 +95,23 @@ export default function Sidebar() {
               key={pl.id}
               to={`/playlist/${pl.id}`}
               className="sidebar-playlist-item"
+              title={sidebarCollapsed ? pl.name : ''}
             >
               <span
                 className="sidebar-playlist-dot"
                 style={{ background: PLAYLIST_COLORS[i % PLAYLIST_COLORS.length] }}
               />
-              <span className="truncate">{pl.name}</span>
+              {!sidebarCollapsed && <span className="truncate">{pl.name}</span>}
             </NavLink>
           ))}
-          {playlists.length === 0 && (
-            <div className="text-secondary" style={{ fontSize: '0.8rem', padding: '4px 12px' }}>No playlists yet</div>
-          )}
         </div>
       </div>
 
       {/* Footer */}
       <div className="sidebar-footer">
-        {user?.role === 'admin' && (
-          <button className="btn-glass sidebar-admin-btn" onClick={() => navigate('/admin')}>
-            <span>⚙</span> Admin Panel
+        {user?.role === 'ADMIN' && (
+          <button className="btn-glass sidebar-admin-btn" onClick={() => navigate('/admin')} title={sidebarCollapsed ? 'Admin' : ''}>
+            <span>⚙</span> {!sidebarCollapsed && 'Admin Panel'}
           </button>
         )}
         <div className="sidebar-user">
@@ -96,11 +120,13 @@ export default function Sidebar() {
             alt={user?.name}
             className="sidebar-user-avatar"
           />
-          <div className="sidebar-user-info">
-            <span className="sidebar-user-name truncate">{user?.name || 'User'}</span>
-            {user?.role === 'admin' && <span className="badge badge-admin">Admin</span>}
-          </div>
-          <button className="btn-icon" onClick={logout} title="Log out">⏻</button>
+          {!sidebarCollapsed && (
+            <div className="sidebar-user-info">
+              <span className="sidebar-user-name truncate">{user?.name || 'User'}</span>
+              {user?.role === 'ADMIN' && <span className="badge badge-admin">Admin</span>}
+            </div>
+          )}
+          {!sidebarCollapsed && <button className="btn-icon" onClick={logout} title="Log out">⏻</button>}
         </div>
       </div>
     </aside>

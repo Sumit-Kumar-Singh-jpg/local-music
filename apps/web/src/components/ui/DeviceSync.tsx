@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useSyncStore, MY_DEVICE_ID } from '../../store/syncStore'
-import { usePlayerStore } from '../../store/playerStore'
-import type { ConnectedDevice } from '../../../../packages/shared/src/types/sync'
+import { usePlayerStore, getArtistName, getCoverUrl } from '../../store/playerStore'
+import type { ConnectedDevice } from '../../../../../packages/shared/src/types/sync'
 import './DeviceSync.css'
 
 const PLATFORM_ICON: Record<string, string> = {
@@ -86,7 +86,7 @@ export default function DeviceSync({ onClose }: DeviceSyncProps) {
     platform: 'web',
     lastSeen: Date.now(),
     currentTrack: track
-      ? { id: track.id, title: track.title, artist: track.artist, cover: track.cover, progress: 0, isPlaying }
+      ? { id: track.id, title: track.title, artist: getArtistName(track), cover: getCoverUrl(track), progress: 0, isPlaying }
       : undefined,
   }
 

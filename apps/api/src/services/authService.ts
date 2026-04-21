@@ -23,6 +23,7 @@ export class AuthService {
     return prisma.user.create({
       data: {
         ...data,
+        isApproved: false,
         profile: {
           create: {
             handle: data.username,
@@ -47,6 +48,7 @@ export class AuthService {
     return prisma.user.findFirst({
       where: {
         OR: [
+          { id: identifier },
           { email: identifier },
           { username: identifier }
         ]

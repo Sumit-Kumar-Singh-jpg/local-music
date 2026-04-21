@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { usePlayerStore } from '../store/playerStore'
+import { usePlayerStore, formatTime } from '../store/playerStore'
 import { playlistApi, musicApi } from '../lib/api'
+import './Playlist.css'
 
 export default function Playlist() {
   const { id } = useParams<{ id: string }>()
@@ -20,9 +21,8 @@ export default function Playlist() {
         setLoading(false)
       })
       .catch(() => {
-        // Fallback: use trending 
         musicApi.trending().then(res => {
-          setPlaylist({ name: 'My Playlist', description: 'Your collection', trackCount: res.tracks.length })
+          setPlaylist({ name: 'My Playlist', description: 'Your personal collection curated by Local Music', trackCount: res.tracks.length })
           setTracks(res.tracks)
           setLoading(false)
         }).catch(() => setLoading(false))
@@ -36,47 +36,81 @@ export default function Playlist() {
   const mins = Math.floor((totalDuration % 3600) / 60)
 
   return (
-    <div className="fade-in">
-      <div style={{ display: 'flex', gap: 40, marginBottom: 40 }}>
-        <img src={playlist?.coverArt || 'https://picsum.photos/seed/' + id + '/400/400'} alt={playlist?.name} style={{ width: 220, height: 220, borderRadius: 'var(--radius-2xl)', objectFit: 'cover', boxShadow: 'var(--shadow-glow-secondary)' }} />
-        <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', gap: 8 }}>
-          <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--color-on-surface-variant)' }}>Playlist</span>
-          <h1 style={{ fontSize: '2.5rem', fontWeight: 900, letterSpacing: '-0.04em', lineHeight: 1 }}>{playlist?.name || 'Playlist'}</h1>
-          <p style={{ color: 'var(--color-on-surface-variant)' }}>{playlist?.description || ''}</p>
-          <p style={{ color: 'var(--color-on-surface-variant)', fontSize: '0.875rem' }}>
-            {tracks.length} songs · {hours > 0 ? `${hours} hr ` : ''}{mins} min
-          </p>
-          <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
-            <button className="btn-play-large btn" onClick={() => tracks.length > 0 && play(tracks[0], tracks)}>▶</button>
-            <button className="btn-glass btn" onClick={() => {
-              if (tracks.length > 0) {
-                const shuffled = [...tracks].sort(() => Math.random() - 0.5)
-                play(shuffled[0], shuffled)
-              }
-            }}>⇄</button>
-            <button className={`btn-glass btn${liked ? ' active-ctrl' : ''}`} onClick={() => setLiked(!liked)}>
-              {liked ? '♥' : '♡'}
+    <div className="playlist-page fade-in">
+      <div className="playlist-header">
+        <div className="playlist-cover-wrap">
+          <img 
+            src={playlist?.coverArt || `https://api.dicebear.com/7.x/shapes/svg?seed=${id}`} 
+            alt={playlist?.name} 
+            className="playlist-cover"
+          />
+        </div>
+        
+        <div className="playlist-meta">
+          <span className="playlist-type">Playlist</span>
+          <h1 className="playlist-name">{playlist?.name || 'My Playlist'}</h1>
+          <p className="playlist-description">{playlist?.description || 'Your custom collection of sounds.'}</p>
+          
+          <div className="playlist-stats">
+            <span>{tracks.length} songs</span>
+            <div className="dot" />
+            <span>{hours > 0 ? `${hours} hr ` : ''}{mins} min</span>
+          </div>
+
+          <div className="playlist-actions">
+            <button className="btn-play-large btn" onClick={() => tracks.length > 0 && play(tracks[0], tracks)}>
+              {nowTrack?.id === tracks[0]?.id && isPlaying ? '⏸' : '▶'} Play
             </button>
+            <button className={`btn-glass btn${liked ? ' active-ctrl' : ''}`} onClick={() => setLiked(!liked)}>
+              {liked ? '♥ Liked' : '♡ Like'}
+            </button>
+            <button className="btn-icon">⋯</button>
           </div>
         </div>
       </div>
 
-      {tracks.map((t, i) => (
-        <div key={t.id} className={`track-row${nowTrack?.id === t.id ? ' playing' : ''}`} onClick={() => play(t, tracks)}>
-          <span className="track-num">
-            {nowTrack?.id === t.id && isPlaying
-              ? <div className="playing-bars"><span/><span/><span/></div>
-              : i+1}
-          </span>
-          <img src={t.album?.coverArt || t.cover || 'https://picsum.photos/200'} alt={t.title} className="track-thumb" />
-          <div className="track-info">
-            <div className="track-title">{t.title}</div>
-            <div className="track-artist">{t.artist?.name || playlist?.artist?.name || ''}</div>
+      <div className="track-list-header">
+        <span>#</span>
+        <span>Title</span>
+        <span>Album</span>
+        <span style={{ textAlign: 'right' }}>🕒</span>
+      </div>
+
+      <div className="playlist-tracks-list">
+        {tracks.map((t, i) => (
+          <div 
+            key={t.id} 
+            className={`playlist-track-row${nowTrack?.id === t.id ? ' playing' : ''}`} 
+            onClick={() => play(t, tracks)}
+          >
+            <span className="track-num">
+              {nowTrack?.id === t.id && isPlaying
+                ? <div className="playing-bars"><span/><span/><span/></div>
+                : i + 1}
+            </span>
+            
+            <div className="track-main">
+              <img src={t.cover || `https://api.dicebear.com/7.x/shapes/svg?seed=${t.id}`} alt="" className="track-img" />
+              <div className="track-titles">
+                <div className="track-name truncate">{t.title}</div>
+                <div className="track-artists truncate">{t.artistName || t.artist?.name || t.artist}</div>
+              </div>
+            </div>
+
+            <div className="track-album truncate">{t.albumTitle || t.album?.title || t.album || 'Single'}</div>
+            
+            <div className="track-duration">
+              {formatTime(t.duration)}
+            </div>
           </div>
-          <span className="text-secondary" style={{ fontSize: '0.815rem' }}>{t.album?.title || ''}</span>
-          <span className="track-duration">{`${Math.floor(t.duration/60)}:${(t.duration%60).toString().padStart(2,'0')}`}</span>
+        ))}
+      </div>
+
+      {tracks.length === 0 && (
+        <div style={{ textAlign: 'center', padding: '64px 0' }}>
+          <p className="text-secondary">This playlist is currently empty.</p>
         </div>
-      ))}
+      )}
     </div>
   )
 }

@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "npx kill-port 3000 3001 && turbo run dev",
+    "dev": "turbo run dev",
+    "clean": "npx kill-port 3000 3001",
     "dev:api": "turbo run dev --filter @local-music/api",
     "dev:web": "turbo run dev --filter @local-music/web",
     "build": "turbo run build",

@@ -63,6 +63,7 @@
   gap: var(--space-3);
   margin-top: var(--space-2);
 }
+
 .admin-user-avatar {
   width: 38px;
   height: 38px;
