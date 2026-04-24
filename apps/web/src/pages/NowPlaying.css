@@ -1,6 +1,6 @@
 .np-page {
-  height: 100vh;
-  overflow: hidden;
+  height: 100%;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   position: relative;

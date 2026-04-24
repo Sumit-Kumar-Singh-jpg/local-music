@@ -171,6 +171,6 @@ export const adminApi = {
 
 // ── Health ────────────────────────────────────────────────────────────────
 export const healthCheck = () =>
-  fetch('http://127.0.0.1:3001/health', { signal: AbortSignal.timeout(3000) })
+  fetch('/health', { signal: AbortSignal.timeout(3000) })
     .then(r => r.json() as Promise<{ status: string; timestamp: string }>)
     .catch(() => ({ status: 'offline', timestamp: '' }))

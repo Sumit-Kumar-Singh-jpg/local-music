@@ -47,9 +47,16 @@ export const musicRoutes = async (app: FastifyInstance) => {
         return reply.status(404).send({ error: 'Track storage not found' });
       }
 
-      let filePath = path.normalize(storage.filePath);
+      let filePath = storage.filePath;
+      // Ensure absolute path
+      if (!path.isAbsolute(filePath)) {
+        filePath = path.resolve(__dirname, '../../media', filePath);
+      }
+      
+      filePath = path.normalize(filePath);
+
       if (!fs.existsSync(filePath)) {
-        request.log.warn(`[Stream 404] File missing on disk at: ${path.resolve(filePath)}`);
+        request.log.warn(`[Stream 404] File missing on disk at: ${filePath}`);
         
         // Fallback probe for extensions if path is stale
         const baseWithoutExt = filePath.replace(/\.[^/.]+$/, "");
@@ -82,8 +89,15 @@ export const musicRoutes = async (app: FastifyInstance) => {
       const mediaRoot = path.resolve(__dirname, '../../media');
       const relativePath = path.relative(mediaRoot, filePath);
       
+      // Explicit MIME handling for .m4a and better range support
+      if (filePath.endsWith('.m4a')) {
+        reply.header('Content-Type', 'audio/mp4');
+      } else if (filePath.endsWith('.flac')) {
+        reply.header('Content-Type', 'audio/flac');
+      }
+
       request.log.info(`[STREAM] Serving relative: ${relativePath}`);
-      return reply.sendFile(relativePath);
+      return reply.header('Accept-Ranges', 'bytes').sendFile(relativePath);
     } catch (err) {
       request.log.error(err);
       return reply.status(500).send({ error: 'Internal server error during streaming' });

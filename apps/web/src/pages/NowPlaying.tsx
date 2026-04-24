@@ -100,7 +100,7 @@ export default function NowPlaying() {
             </div>
           </div>
           
-            <div style={{ textAlign: 'center', marginTop: 40, width: '100%', maxWidth: '800px' }}>
+            <div style={{ textAlign: 'center', marginTop: 20, width: '100%', maxWidth: '800px' }}>
               <h2 style={{ 
                 fontSize: 'min(3.5rem, 10vw)', 
                 fontWeight: 900, 
@@ -120,7 +120,7 @@ export default function NowPlaying() {
               }}>{artistStr}</p>
             </div>
 
-          <div className="np-seek" style={{ width: '100%', maxWidth: 480, marginTop: 40 }}>
+          <div className="np-seek" style={{ width: '100%', maxWidth: 480, marginTop: 20 }}>
             <span className="now-playing-time" style={{ width: 45 }}>{formatTime(elapsed)}</span>
             <div className="seek-bar" style={{ flex: 1, height: 6, background: 'rgba(255,255,255,0.1)' }}
               onClick={e => { const r = e.currentTarget.getBoundingClientRect(); seek((e.clientX - r.left)/r.width) }}>
@@ -131,7 +131,7 @@ export default function NowPlaying() {
             <span className="now-playing-time" style={{ width: 45, textAlign: 'right' }}>{formatTime(track.duration)}</span>
           </div>
 
-          <div className="np-controls" style={{ marginTop: 40, gap: 32 }}>
+          <div className="np-controls" style={{ marginTop: 24, gap: 32 }}>
             <button className={`btn-icon${shuffle ? ' active-ctrl' : ''}`} onClick={toggleShuffle} style={{ fontSize: '1.2rem' }}>⇄</button>
             <button className="btn-icon" style={{ fontSize: '2rem' }} onClick={prev}>⏮</button>
             <button className="btn-play-large btn" 

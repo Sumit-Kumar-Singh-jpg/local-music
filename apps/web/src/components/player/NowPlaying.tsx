@@ -153,9 +153,8 @@ export default function NowPlayingBar() {
     <>
       <AudioEngine />
 
-      {!isNowPlayingPage && (
-        <div className="now-playing-bar glass-heavy">
-          {/* Left: Track info */}
+      <div className="now-playing-bar glass-heavy">
+        {/* Left: Track info */}
           <div className="now-playing-left" onClick={() => navigate('/now-playing')}>
             <img src={getCoverUrl(track)} alt={track.title} className="now-playing-cover" />
             <div className="now-playing-info">
@@ -272,7 +271,6 @@ export default function NowPlayingBar() {
             <button className="btn-icon" onClick={() => navigate('/now-playing')} title="Full screen">⛶</button>
           </div>
         </div>
-      )}
 
       {showDeviceSync && <DeviceSync onClose={() => setShowDeviceSync(false)} />}
     </>
