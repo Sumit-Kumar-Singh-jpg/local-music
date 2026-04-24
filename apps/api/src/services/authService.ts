@@ -20,13 +20,14 @@ export class AuthService {
   }
 
   static async createUser(data: { name: string; email: string; passwordHash: string; username: string }) {
+    const { name, ...userData } = data;
     return prisma.user.create({
       data: {
-        ...data,
+        ...userData,
         profile: {
           create: {
             handle: data.username,
-            displayName: data.name,
+            displayName: name,
             avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${data.username}`,
             settings: {
               audioQuality: 'NORMAL',
