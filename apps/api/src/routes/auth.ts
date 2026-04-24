@@ -18,12 +18,12 @@ export const authRoutes = async (app: FastifyInstance) => {
   app.post('/register', async (request, reply) => {
     const data = registerSchema.parse(request.body);
     
-    // Check if user already exists by email or username
-    const existingEmail = await AuthService.validateUser(data.email);
+    // Check if user already exists by email or username independently
+    const existingEmail = await AuthService.findUserByEmail(data.email);
     if (existingEmail) {
       return reply.status(400).send({ error: 'Email already registered' });
     }
-    const existingUsername = await AuthService.validateUser(data.username);
+    const existingUsername = await AuthService.findUserByUsername(data.username);
     if (existingUsername) {
       return reply.status(400).send({ error: 'Username already taken' });
     }

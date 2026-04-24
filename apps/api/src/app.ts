@@ -17,6 +17,7 @@ import { userRoutes } from './routes/users';
 import { adminRoutes } from './routes/admin';
 import db from './plugins/db';
 import swagger from './plugins/swagger';
+import sockets from './plugins/sockets';
 import { prisma } from './db/client';
 
 export const buildApp = async () => {
@@ -87,6 +88,7 @@ export const buildApp = async () => {
   // 5. Database & Documentation
   await app.register(db);
   await app.register(swagger);
+  await app.register(sockets);
 
   // 6. Routes
   await app.register(authRoutes, { prefix: '/api/auth' });
@@ -99,7 +101,16 @@ export const buildApp = async () => {
   await app.register(userRoutes, { prefix: '/api/users' });
   await app.register(adminRoutes, { prefix: '/api/admin' });
 
-  // 7. Health & Diagnostics
+  // 7. Routes - Root
+  app.get('/', async (request, reply) => {
+    return { 
+      message: 'Solaris Music Platform API', 
+      status: 'online', 
+      docs: '/api/docs' 
+    };
+  });
+
+  // 8. Health & Diagnostics
   app.get('/health', async (request, reply) => {
     try {
       const dbStatus = await prisma.$queryRaw`SELECT 1`.then(() => 'UP').catch(() => 'DOWN');

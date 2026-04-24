@@ -4,7 +4,6 @@ import type { SyncEvent, ConnectedDevice } from '../../../../packages/shared/src
 // ── Device Identity ───────────────────────────────────────────────────────
 const DEVICE_ID_KEY  = 'lm-device-id'
 const DEVICE_NAME_KEY = 'lm-device-name'
-const CHANNEL_NAME   = 'lm-sync-v1'
 
 function generateDeviceId(): string {
   return `web-${Math.random().toString(36).slice(2, 10)}`
@@ -33,8 +32,7 @@ export const MY_DEVICE_ID = getOrCreateDeviceId()
 interface SyncState {
   connectedDevices: ConnectedDevice[]
   isSyncEnabled: boolean
-  channel: BroadcastChannel | null
-  // ← Now reactive, not a module constant
+  socket: WebSocket | null
   myDeviceName: string
 
   init: () => void
@@ -42,84 +40,121 @@ interface SyncState {
   publish: (event: Omit<SyncEvent, 'deviceId' | 'deviceName' | 'platform' | 'timestamp'>) => void
   transferTo: (deviceId: string) => void
   toggleSync: () => void
-  /** Saves to localStorage AND updates reactive state so the UI re-renders instantly */
   setDeviceName: (name: string) => void
 }
 
-const STALE_MS = 15_000
+const STALE_MS = 30_000
 
 export const useSyncStore = create<SyncState>((set, get) => ({
   connectedDevices: [],
   isSyncEnabled: true,
-  channel: null,
-  // Initialise from localStorage — this field is reactive
+  socket: null,
   myDeviceName: localStorage.getItem(DEVICE_NAME_KEY) ?? getDefaultName(),
 
   init: () => {
-    if (get().channel) return
-    const ch = new BroadcastChannel(CHANNEL_NAME)
+    if (get().socket) return
 
-    ch.onmessage = (e: MessageEvent<SyncEvent>) => {
-      const event = e.data
-      if (event.deviceId === MY_DEVICE_ID) return
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    const host = window.location.host
+    const wsUrl = `${protocol}//${host}/api/sync/ws`
+    
+    console.log(`[Sync] Attempting connection to Solaris Connect: ${wsUrl}`)
+    const socket = new WebSocket(wsUrl)
 
-      // ── TRANSFER received — this tab was asked to start playing ──
-      if (event.type === 'TRANSFER' && event.payload.trackId) {
-        // Dynamically import playerStore to start playing the handed-off track
-        import('./playerStore').then(({ usePlayerStore, normalizeTrack }) => {
-          const store = usePlayerStore.getState()
-          // Find the track in the current queue; fall back to event payload info
-          const trackData = store.playQueue.find(t => t.id === event.payload.trackId) ?? {
-            id:         event.payload.trackId!,
-            title:      event.payload.trackTitle  ?? 'Unknown Track',
-            artistName: event.payload.trackArtist ?? 'Unknown Artist',
-            duration:   event.payload.duration    ?? 0,
-            cover:      event.payload.trackCover  ?? '',
-          }
-          store.play(normalizeTrack(trackData))
-        })
-        return
+    socket.onopen = () => {
+      console.log('%c[Sync] SOLARIS CONNECT HUB: OPEN', 'color: #00ff00; font-weight: bold')
+      
+      // 2. Authenticate
+      const authState = JSON.parse(localStorage.getItem('local-music-auth') || '{}')
+      const token = authState?.state?.token
+      
+      if (token) {
+        console.log('[Sync] Sending Auth Handshake...')
+        socket.send(JSON.stringify({ 
+          type: 'AUTH', 
+          token, 
+          deviceName: get().myDeviceName 
+        }))
       }
-
-      set(state => {
-        const existing = state.connectedDevices.find(d => d.deviceId === event.deviceId)
-
-        if (event.type === 'DISCONNECT') {
-          return { connectedDevices: state.connectedDevices.filter(d => d.deviceId !== event.deviceId) }
-        }
-
-        const updated: ConnectedDevice = {
-          deviceId:    event.deviceId,
-          deviceName:  event.deviceName,
-          platform:    event.platform,
-          lastSeen:    event.timestamp,
-          currentTrack: existing?.currentTrack,
-        }
-
-        if (['PLAY', 'TRACK_CHANGE'].includes(event.type) && event.payload.trackId) {
-          updated.currentTrack = {
-            id:       event.payload.trackId,
-            title:    event.payload.trackTitle  ?? '',
-            artist:   event.payload.trackArtist ?? '',
-            cover:    event.payload.trackCover  ?? '',
-            progress: event.payload.progress    ?? 0,
-            isPlaying: event.type === 'PLAY' || event.type === 'TRACK_CHANGE',
-          }
-        }
-        if (event.type === 'PAUSE' && updated.currentTrack) {
-          updated.currentTrack = { ...updated.currentTrack, isPlaying: false }
-        }
-        if (event.type === 'SEEK' && updated.currentTrack) {
-          updated.currentTrack = { ...updated.currentTrack, progress: event.payload.progress ?? 0 }
-        }
-
-        return existing
-          ? { connectedDevices: state.connectedDevices.map(d => d.deviceId === event.deviceId ? updated : d) }
-          : { connectedDevices: [...state.connectedDevices, updated] }
-      })
+      
+      get().publish({ type: 'HEARTBEAT', payload: {} })
     }
 
-    set({ channel: ch })
+    socket.onmessage = (e) => {
+      try {
+        const event = JSON.parse(e.data)
+        
+        // Handle explicit Hub responses
+        if (event.type === 'AUTH_SUCCESS') {
+          console.log('%c[Sync] AUTHENTICATED SUCCESSFULLY', 'color: #7c4dff; font-weight: bold')
+          return
+        }
+
+        if (event.deviceId === MY_DEVICE_ID) return
+
+        // Handle incoming transfer
+        if (event.type === 'TRANSFER' && event.payload.trackId) {
+          console.log(`%c[Sync] Incoming Transfer Hand-off: ${event.payload.trackTitle}`, 'color: #ff9100')
+          import('./playerStore').then(({ usePlayerStore, normalizeTrack }) => {
+            const store = usePlayerStore.getState()
+            const trackData = store.playQueue.find(t => t.id === event.payload.trackId) ?? {
+              id:         event.payload.trackId!,
+              title:      event.payload.trackTitle  ?? 'Unknown Track',
+              artistName: event.payload.trackArtist ?? 'Unknown Artist',
+              duration:   event.payload.duration    ?? 0,
+              cover:      event.payload.trackCover  ?? '',
+            }
+            store.play(normalizeTrack(trackData))
+          })
+          return
+        }
+
+        // Update device list
+        set(state => {
+          const existing = state.connectedDevices.find(d => d.deviceId === event.deviceId)
+          if (event.type === 'DISCONNECT') {
+            console.log(`[Sync] Device disconnected: ${event.deviceName}`)
+            return { connectedDevices: state.connectedDevices.filter(d => d.deviceId !== event.deviceId) }
+          }
+
+          const updated: ConnectedDevice = {
+            deviceId:    event.deviceId,
+            deviceName:  event.deviceName,
+            platform:    event.platform,
+            lastSeen:    event.timestamp,
+            currentTrack: existing?.currentTrack,
+          }
+
+          if (['PLAY', 'TRACK_CHANGE'].includes(event.type) && event.payload.trackId) {
+            updated.currentTrack = {
+              id:       event.payload.trackId,
+              title:    event.payload.trackTitle  ?? '',
+              artist:   event.payload.trackArtist ?? '',
+              cover:    event.payload.trackCover  ?? '',
+              progress: event.payload.progress    ?? 0,
+              isPlaying: true,
+            }
+          }
+          if (event.type === 'PAUSE' && updated.currentTrack) {
+            updated.currentTrack = { ...updated.currentTrack, isPlaying: false }
+          }
+          
+          return existing
+            ? { connectedDevices: state.connectedDevices.map(d => d.deviceId === event.deviceId ? updated : d) }
+            : { connectedDevices: [...state.connectedDevices, updated] }
+        })
+      } catch (err) {
+        console.error('[Sync] Socket Message Error:', err)
+      }
+    }
+
+    socket.onclose = (e) => {
+      console.warn(`[Sync] CLOSED (Code: ${e.code}). Reconnecting in 5s...`)
+      set({ socket: null })
+      setTimeout(() => get().init(), 5000)
+    }
+
+    set({ socket })
 
     const heartbeatInterval = setInterval(() => {
       if (!get().isSyncEnabled) return
@@ -128,56 +163,46 @@ export const useSyncStore = create<SyncState>((set, get) => ({
       set(state => ({
         connectedDevices: state.connectedDevices.filter(d => now - d.lastSeen < STALE_MS),
       }))
-    }, 10_000)
-
-    get().publish({ type: 'HEARTBEAT', payload: {} })
+    }, 20_000)
 
     window.addEventListener('beforeunload', () => {
       get().publish({ type: 'DISCONNECT', payload: {} })
       clearInterval(heartbeatInterval)
-      ch.close()
+      socket.close()
     })
   },
 
   destroy: () => {
     get().publish({ type: 'DISCONNECT', payload: {} })
-    get().channel?.close()
-    set({ channel: null, connectedDevices: [] })
+    get().socket?.close()
+    set({ socket: null, connectedDevices: [] })
   },
 
   publish: (partial) => {
-    const { channel, isSyncEnabled, myDeviceName } = get()
-    if (!channel || !isSyncEnabled) return
+    const { socket, isSyncEnabled, myDeviceName } = get()
+    if (!socket || socket.readyState !== WebSocket.OPEN || !isSyncEnabled) return
 
     const event: SyncEvent = {
       ...partial,
       deviceId:   MY_DEVICE_ID,
-      deviceName: myDeviceName,      // ← always uses current reactive name
+      deviceName: myDeviceName,
       platform:   'web',
       timestamp:  Date.now(),
     }
-    channel.postMessage(event)
+    socket.send(JSON.stringify(event))
   },
 
-  /**
-   * Transfer: pause this tab, then broadcast TRANSFER so the target tab
-   * picks up the current track and starts playing it.
-   */
   transferTo: (deviceId) => {
     const { connectedDevices } = get()
     const target = connectedDevices.find(d => d.deviceId === deviceId)
     if (!target) return
 
-    // Get current player state to hand off
+    console.log(`[Sync] Initiating Transfer to device: ${target.deviceName}`)
     import('./playerStore').then(({ usePlayerStore }) => {
       const { track, pause, progress } = usePlayerStore.getState()
-
-      // 1. Pause this device
       pause()
-
       if (!track) return
 
-      // 2. Broadcast TRANSFER event — the target tab's ch.onmessage handles it
       get().publish({
         type: 'TRANSFER',
         payload: {
@@ -194,15 +219,10 @@ export const useSyncStore = create<SyncState>((set, get) => ({
 
   toggleSync: () => set(s => ({ isSyncEnabled: !s.isSyncEnabled })),
 
-  /**
-   * Rename: persist to localStorage AND update reactive Zustand state.
-   * Components reading `myDeviceName` from the store will re-render immediately.
-   */
   setDeviceName: (name: string) => {
     const trimmed = name.trim() || getDefaultName()
     localStorage.setItem(DEVICE_NAME_KEY, trimmed)
-    set({ myDeviceName: trimmed })             // ← triggers re-render
-    // Re-announce with new name so other tabs update their device list
+    set({ myDeviceName: trimmed })
     setTimeout(() => get().publish({ type: 'HEARTBEAT', payload: {} }), 50)
   },
 }))

@@ -44,6 +44,27 @@ export class AuthService {
     });
   }
 
+  static async findUserByEmail(email: string) {
+    return prisma.user.findUnique({
+      where: { email },
+      include: { profile: true, artistProfile: true },
+    });
+  }
+
+  static async findUserByUsername(username: string) {
+    return prisma.user.findUnique({
+      where: { username },
+      include: { profile: true, artistProfile: true },
+    });
+  }
+
+  static async findUserById(id: string) {
+    return prisma.user.findUnique({
+      where: { id },
+      include: { profile: true, artistProfile: true },
+    });
+  }
+
   static async validateUser(identifier: string) {
     return prisma.user.findFirst({
       where: {
