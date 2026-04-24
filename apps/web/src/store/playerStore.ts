@@ -1,160 +1,320 @@
-import { create } from 'zustand'
+/**
+ * Spotify-like Player Store
+ * ------------------------
+ * Manages playback lifecycle, robust queue handling, and synchronized state.
+ */
 
-export interface Track {
-  id: string
-  title: string
-  artist: string | { name: string; id?: string }
-  album: string | { title?: string; coverArt?: string; id?: string }
-  duration: number // seconds
-  cover?: string
-  audioUrl?: string
-  explicit?: boolean
-  isExplicit?: boolean
-  hifi?: boolean
-  playCount?: number
-}
+import { create } from 'zustand'
+import { Track } from '../../../../packages/shared/src/types/track'
+
+export type PlaybackState = 'idle' | 'loading' | 'buffering' | 'playing' | 'paused' | 'ended' | 'error'
+export type RepeatMode = 'off' | 'all' | 'one'
 
 interface PlayerState {
+  // Core State
   track: Track | null
-  queue: Track[]
-  isPlaying: boolean
-  progress: number // 0-1
-  volume: number  // 0-1
-  shuffle: boolean
-  repeat: 'off' | 'one' | 'all'
+  originalQueue: Track[]  // Canonical order
+  playQueue: Track[]      // Active order (shuffled or original)
+  playbackState: PlaybackState
+  isPlaying: boolean      // Convenience alias for (playbackState === 'playing')
+  error: string | null
+  
+  // Timing & Position
+  progress: number        // 0.0 to 1.0 (Real time from engine)
+  isSeeking: boolean      // UI is currently dragging the slider
+  pendingProgress: number // Value currently being dragged to
+  
+  // Audio Settings
+  volume: number
   isMuted: boolean
+  shuffle: boolean
+  repeat: RepeatMode
 
+  // Actions: Transport
   play: (track: Track, queue?: Track[]) => void
   pause: () => void
   resume: () => void
-  togglePlay: () => void
   next: () => void
   prev: () => void
+  togglePlay: () => void
   seek: (progress: number) => void
-  setVolume: (volume: number) => void
+  
+  // Actions: Internal State Sync (Called by AudioEngine)
+  setPlaybackState: (state: PlaybackState) => void
+  setProgress: (progress: number) => void
+  reportError: (error: string, type?: string) => void
+  
+  // Actions: User Interaction
+  setIsSeeking: (seeking: boolean) => void
+  setPendingProgress: (progress: number) => void
+  setVolume: (v: number) => void
+  setMuted: (v: boolean) => void
+  toggleMute: () => void
   toggleShuffle: () => void
   toggleRepeat: () => void
-  toggleMute: () => void
+  setQueue: (queue: Track[]) => void
 }
 
-export const DEMO_TRACKS: Track[] = []
+// ── Helpers ────────────────────────────────────────────────────────────────
 
-const audioEl = new Audio()
-audioEl.crossOrigin = 'anonymous'
-
-// Lazy import to avoid circular deps — syncStore uses playerStore state but not the store itself
-function syncPublish(type: string, payload: Record<string, unknown>) {
-  try {
-    // Dynamic import at runtime avoids circular dependency at module load time
-    import('./syncStore').then(({ useSyncStore }) => {
-      useSyncStore.getState().publish({ type: type as any, payload })
-    })
-  } catch { /* sync not available */ }
+export const normalizeTrack = (raw: any): Track => {
+  const id = raw.id || raw.trackId
+  // Ensure we have a valid duration, fallback to 0 if totally missing
+  const duration = raw.duration || (raw.duration_ms ? raw.duration_ms / 1000 : 0) || 0;
+  
+  return {
+    ...raw,
+    id,
+    artistName: raw.artistName || (typeof raw.artist === 'object' ? raw.artist?.name : raw.artist) || 'Unknown Artist',
+    albumTitle: raw.albumTitle || raw.album?.title || 'Unknown Album',
+    duration,
+    audioUrl: raw.audioUrl || `/api/music/${id}/stream`,
+    cover: raw.cover || raw.coverUrl || (raw.album?.coverArt) || `/api/music/${id}/cover`
+  }
 }
+
+export const formatTime = (seconds: number) => {
+  if (isNaN(seconds) || seconds < 0) return '0:00'
+  const mins = Math.floor(seconds / 60)
+  const secs = Math.floor(seconds % 60)
+  return `${mins}:${secs.toString().padStart(2, '0')}`
+}
+
+export const getArtistName = (track: Track | null) => track?.artistName || 'Unknown Artist'
+export const getCoverUrl = (track: Track | null) => {
+  if (!track) return ''
+  return track.cover || `/api/music/${track.id}/cover`
+}
+
+/**
+ * Fisher-Yates Shuffle
+ */
+function shuffleArray<T>(array: T[]): T[] {
+  const arr = [...array]
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]]
+  }
+  return arr
+}
+
+// ── Store Implementation ───────────────────────────────────────────────────
 
 export const usePlayerStore = create<PlayerState>((set, get) => ({
   track: null,
-  queue: [],
+  originalQueue: [],
+  playQueue: [],
+  playbackState: 'idle',
   isPlaying: false,
+  error: null,
   progress: 0,
+  isSeeking: false,
+  pendingProgress: 0,
   volume: 0.8,
+  isMuted: false,
   shuffle: false,
   repeat: 'off',
-  isMuted: false,
 
-  play: (track, queue) => {
-    if (track.audioUrl) {
-      audioEl.src = track.audioUrl
-      audioEl.play().catch(console.error)
+  setPlaybackState: (playbackState) => {
+    set({ playbackState, isPlaying: playbackState === 'playing' })
+  },
+
+  setProgress: (progress) => {
+    // Only update progress if NOT seeking to prevent UI jitter
+    if (!get().isSeeking) {
+      set({ progress })
     }
-    set({ track, queue: queue ?? get().queue, isPlaying: true, progress: 0 })
-    syncPublish('TRACK_CHANGE', {
-      trackId: track.id,
-      trackTitle: track.title,
-      trackArtist: typeof track.artist === 'string' ? track.artist : track.artist?.name,
-      trackCover: track.cover,
-      progress: 0,
+  },
+
+  reportError: (error, type = 'unspecified') => {
+    const { track, playbackState } = get()
+    console.error(`[Playback Telemetry] Error: ${error} Type: ${type} State: ${playbackState} Track: ${track?.id}`)
+    set({ playbackState: 'error', error })
+    
+    // Future: Send to /api/telemetry
+    if (track) {
+      fetch('/api/admin/telemetry', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          trackId: track.id,
+          error,
+          type,
+          userAgent: navigator.userAgent,
+          timestamp: new Date().toISOString(),
+        })
+      }).catch(() => {}) // Silent fail for telemetry
+    }
+  },
+
+  setIsSeeking: (isSeeking) => set({ isSeeking }),
+  setPendingProgress: (pendingProgress) => set({ pendingProgress }),
+
+  play: (rawTrack, rawQueue) => {
+    const track = normalizeTrack(rawTrack)
+    let originalQueue = rawQueue ? rawQueue.map(normalizeTrack) : get().originalQueue
+    
+    // Ensure the track is in the queue
+    if (!originalQueue.find(t => t.id === track.id)) {
+      originalQueue = [track, ...originalQueue]
+    }
+
+    let playQueue = [...originalQueue]
+    if (get().shuffle) {
+      // Keep current track at front, shuffle rest
+      const others = originalQueue.filter(t => t.id !== track.id)
+      playQueue = [track, ...shuffleArray(others)]
+    }
+
+    set({ 
+      track, 
+      originalQueue, 
+      playQueue, 
+      playbackState: 'loading',
+      isPlaying: true, // Optimistically set playing to start engine
+      progress: 0 
+    })
+    
+    // Publish to Sync
+    import('./syncStore').then(({ useSyncStore }) => {
+      useSyncStore.getState().publish({
+        type: 'TRACK_CHANGE',
+        payload: {
+          trackId: track.id,
+          trackTitle: track.title,
+          trackArtist: track.artistName,
+          trackCover: track.cover,
+          duration: track.duration,
+          progress: 0
+        }
+      })
     })
   },
 
   pause: () => {
-    audioEl.pause()
-    set({ isPlaying: false })
-    syncPublish('PAUSE', { progress: get().progress })
+    get().setPlaybackState('paused')
+    import('./syncStore').then(({ useSyncStore }) => {
+      useSyncStore.getState().publish({ type: 'PAUSE', payload: {} })
+    })
   },
 
   resume: () => {
-    audioEl.play().catch(console.error)
-    set({ isPlaying: true })
-    const t = get().track
-    if (t) syncPublish('PLAY', {
-      trackId: t.id,
-      trackTitle: t.title,
-      trackArtist: typeof t.artist === 'string' ? t.artist : t.artist?.name,
-      trackCover: t.cover,
-      progress: get().progress,
+    const { track } = get()
+    if (!track) return
+    
+    get().setPlaybackState('playing')
+    import('./syncStore').then(({ useSyncStore }) => {
+      useSyncStore.getState().publish({
+        type: 'PLAY',
+        payload: {
+          trackId: track.id,
+          trackTitle: track.title,
+          trackArtist: track.artistName,
+          trackCover: track.cover,
+          duration: track.duration,
+          progress: get().progress
+        }
+      })
     })
   },
 
   togglePlay: () => {
-    const { isPlaying, track, queue } = get()
-    if (!track && queue.length > 0) {
-      get().play(queue[0], queue)
-    } else {
-      if (isPlaying) get().pause()
-      else get().resume()
-    }
+    const { playbackState } = get()
+    if (playbackState === 'playing') get().pause()
+    else if (get().track) get().resume()
   },
 
   next: () => {
-    const { queue, track, shuffle } = get()
-    if (!track || queue.length === 0) return
-    const idx = queue.findIndex(t => t.id === track.id)
-    const next = shuffle
-      ? queue[Math.floor(Math.random() * queue.length)]
-      : queue[(idx + 1) % queue.length]
-    get().play(next, queue)
+    const { track, playQueue, repeat } = get()
+    if (!track || playQueue.length === 0) return
+
+    if (repeat === 'one') {
+      get().seek(0)
+      get().resume()
+      return
+    }
+
+    const currentIndex = playQueue.findIndex(t => t.id === track.id)
+    let nextIndex = currentIndex + 1
+
+    if (nextIndex >= playQueue.length) {
+      if (repeat === 'all') nextIndex = 0
+      else {
+        get().setPlaybackState('ended')
+        return
+      }
+    }
+
+    get().play(playQueue[nextIndex])
   },
 
   prev: () => {
-    const { queue, track } = get()
-    if (!track || queue.length === 0) return
-    const idx = queue.findIndex(t => t.id === track.id)
-    const prev = queue[(idx - 1 + queue.length) % queue.length]
-    get().play(prev, queue)
+    const { track, playQueue, progress } = get()
+    if (!track || playQueue.length === 0) return
+
+    // Spotify rule: If more than 3 seconds in, restart the track
+    if (progress * track.duration > 3) {
+      get().seek(0)
+      return
+    }
+
+    const currentIndex = playQueue.findIndex(t => t.id === track.id)
+    let prevIndex = currentIndex - 1
+    
+    if (prevIndex < 0) {
+      if (get().repeat === 'all') prevIndex = playQueue.length - 1
+      else {
+        get().seek(0)
+        return
+      }
+    }
+
+    get().play(playQueue[prevIndex])
   },
 
   seek: (progress) => {
-    if (audioEl.duration) {
-      audioEl.currentTime = progress * audioEl.duration
-    }
-    set({ progress })
-    syncPublish('SEEK', { progress })
+    set({ progress, pendingProgress: progress })
+    import('./syncStore').then(({ useSyncStore }) => {
+      useSyncStore.getState().publish({
+        type: 'SEEK',
+        payload: { progress }
+      })
+    })
   },
 
   setVolume: (volume) => {
-    audioEl.volume = volume
     set({ volume, isMuted: volume === 0 })
-    syncPublish('VOLUME', { volume })
   },
 
-  toggleShuffle: () => set(s => ({ shuffle: !s.shuffle })),
-  toggleRepeat:  () => set(s => ({ repeat: s.repeat === 'off' ? 'all' : s.repeat === 'all' ? 'one' : 'off' })),
-  toggleMute:    () => set(s => ({ isMuted: !s.isMuted })),
-}))
+  setMuted: (isMuted) => set({ isMuted }),
+  toggleMute: () => set(state => ({ isMuted: !state.isMuted })),
 
-export function formatTime(seconds: number): string {
-  const m = Math.floor(seconds / 60)
-  const s = Math.floor(seconds % 60)
-  return `${m}:${s.toString().padStart(2, '0')}`
-}
+  toggleShuffle: () => {
+    const { shuffle, track, originalQueue } = get()
+    const nextShuffle = !shuffle
+    
+    let nextPlayQueue = [...originalQueue]
+    if (nextShuffle && track) {
+      const others = originalQueue.filter(t => t.id !== track.id)
+      nextPlayQueue = [track, ...shuffleArray(others)]
+    }
+    
+    set({ shuffle: nextShuffle, playQueue: nextPlayQueue })
+  },
 
-audioEl.addEventListener('timeupdate', () => {
-  if (audioEl.duration) {
-    usePlayerStore.setState({ progress: audioEl.currentTime / audioEl.duration })
+  toggleRepeat: () => {
+    set(state => {
+      const modes: RepeatMode[] = ['off', 'all', 'one']
+      const nextIdx = (modes.indexOf(state.repeat) + 1) % modes.length
+      return { repeat: modes[nextIdx] }
+    })
+  },
+
+  setQueue: (queue) => {
+    const normalized = queue.map(normalizeTrack)
+    set({ 
+      originalQueue: normalized, 
+      playQueue: get().shuffle ? shuffleArray(normalized) : normalized 
+    })
   }
-})
-
-audioEl.addEventListener('ended', () => {
-  usePlayerStore.getState().next()
-})
+}))

@@ -49,3 +49,7 @@ android/
 *.tfstate
 *.tfstate.backup
 .terraform/
+
+# Media and Data
+apps/api/media/music/
+temp_spotiflac/

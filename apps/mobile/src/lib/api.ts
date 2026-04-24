@@ -1,12 +1,15 @@
 /**
  * Mobile API client — connects to the Local Music backend at :3001
- * Mirrors the route structure from apps/api/src/routes/*
+ * Mirrors the route structure and method names from apps/web/src/lib/api.ts
  *
  * During dev: Android emulator reaches host machine via 10.0.2.2
  * Real device / Expo Go: update BASE_URL to your machine's LAN IP
  */
 
-const BASE_URL = __DEV__
+import { User } from '@local-music/shared/src/types/user'
+import { Track, Album as AlbumType } from '@local-music/shared/src/types/track'
+
+export const BASE_URL = __DEV__
   ? 'http://10.0.2.2:3001/api'   // Android emulator → host machine
   : 'https://api.localmusic.app' // production (placeholder)
 
@@ -32,7 +35,7 @@ async function request<T>(
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ message: res.statusText }))
-    throw new Error(err.message ?? `HTTP ${res.status}`)
+    throw new Error(err.message ?? err.error ?? `HTTP ${res.status}`)
   }
   return res.json() as Promise<T>
 }
@@ -40,70 +43,71 @@ async function request<T>(
 // ── Auth ──────────────────────────────────────────────────────────────────
 export const authApi = {
   login: (email: string, password: string) =>
-    request<{ token: string; user: unknown }>('POST', '/auth/login', { email, password }),
+    request<{ token: string; user: User }>('POST', '/auth/login', { identifier: email, password }),
 
-  register: (name: string, email: string, password: string) =>
-    request<{ token: string; user: unknown }>('POST', '/auth/register', { name, email, password }),
+  register: (name: string, email: string, password: string, username: string) =>
+    request<{ token: string; user: User }>('POST', '/auth/register', { name, email, password, username }),
 }
 
 // ── Music ─────────────────────────────────────────────────────────────────
 export const musicApi = {
   trending: () =>
-    request<{ tracks: unknown[] }>('GET', '/music/trending'),
+    request<{ tracks: Track[] }>('GET', '/music/trending'),
 
-  stream: (id: string) =>
-    request<{ url: string }>('GET', `/music/stream/${id}`),
+  streamUrl: (id: string) => `${BASE_URL}/music/${id}/stream`,
+  
+  coverUrl: (id: string) => `${BASE_URL}/music/${id}/cover`,
 
   search: (q: string) =>
-    request<{ results: unknown[] }>('GET', `/music/search?q=${encodeURIComponent(q)}`),
-}
+    request<{ results: Track[] }>('GET', `/search/tracks?q=${encodeURIComponent(q)}`),
 
-// ── Tracks ────────────────────────────────────────────────────────────────
-export const tracksApi = {
-  getAll: () =>
-    request<{ tracks: unknown[] }>('GET', '/tracks'),
+  getTrack: (id: string) =>
+    request<{ track: Track }>('GET', `/music/${id}`),
 
-  getById: (id: string) =>
-    request<unknown>('GET', `/tracks/${id}`),
-}
+  getAlbum: (id: string) =>
+    request<{ album: any, tracks: Track[] }>('GET', `/albums/${id}`),
 
-// ── Albums ────────────────────────────────────────────────────────────────
-export const albumsApi = {
-  getAll: () =>
-    request<{ albums: unknown[] }>('GET', '/albums'),
-
-  getById: (id: string) =>
-    request<unknown>('GET', `/albums/${id}`),
-}
-
-// ── Artists ───────────────────────────────────────────────────────────────
-export const artistsApi = {
-  getAll: () =>
-    request<{ artists: unknown[] }>('GET', '/artists'),
-
-  getById: (id: string) =>
-    request<unknown>('GET', `/artists/${id}`),
+  getArtist: (id: string) =>
+    request<{ artist: any }>('GET', `/artists/${id}`),
 }
 
 // ── Playlists ─────────────────────────────────────────────────────────────
-export const playlistsApi = {
-  getAll: () =>
-    request<{ playlists: unknown[] }>('GET', '/playlists'),
+export const playlistApi = {
+  list: () =>
+    request<{ playlists: any[] }>('GET', '/playlists'),
 
-  getById: (id: string) =>
-    request<unknown>('GET', `/playlists/${id}`),
+  get: (id: string) =>
+    request<{ playlist: any }>('GET', `/playlists/${id}`),
 
   create: (name: string, description?: string) =>
-    request<unknown>('POST', '/playlists', { name, description }),
+    request<{ playlist: any }>('POST', '/playlists', { name, description }),
 
   addTrack: (playlistId: string, trackId: string) =>
-    request<unknown>('POST', `/playlists/${playlistId}/tracks`, { trackId }),
+    request<{ success: boolean }>('POST', `/playlists/${playlistId}/tracks`, { trackId }),
 }
 
-// ── Search ────────────────────────────────────────────────────────────────
-export const searchApi = {
-  search: (q: string) =>
-    request<{ results: unknown[] }>('GET', `/search?q=${encodeURIComponent(q)}`),
+// ── Users ─────────────────────────────────────────────────────────────────
+export const userApi = {
+  getProfile: () =>
+    request<{ user: User }>('GET', '/users/me'),
+
+  updateProfile: (updates: { displayName?: string; avatarUrl?: string }) =>
+    request<{ user: User }>('PUT', '/users/me', updates),
+}
+
+// ── Admin ─────────────────────────────────────────────────────────────────
+export const adminApi = {
+  getStats: () =>
+    request<{ stats: any }>('GET', '/admin/stats'),
+
+  getTasks: () =>
+    request<{ tasks: any[] }>('GET', '/admin/tasks'),
+
+  addPlaylist: (url: string) =>
+    request<{ success: boolean }>('POST', '/admin/add-playlist', { url }),
+
+  stopTask: (id: string) =>
+    request<{ success: boolean }>('POST', `/admin/stop-task`, { id }),
 }
 
 // ── Health ────────────────────────────────────────────────────────────────

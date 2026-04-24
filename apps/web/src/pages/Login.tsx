@@ -45,7 +45,7 @@ export default function LoginPage() {
     try {
       await login(identifier, password)
       const user = useAuthStore.getState().user
-      navigate(user?.role === 'admin' ? '/admin' : '/')
+      navigate(user?.role === 'ADMIN' ? '/admin' : '/')
     } catch {
       setError('Invalid credentials. Please try again.')
     }

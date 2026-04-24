@@ -16,6 +16,7 @@ export class SearchService {
         genre: track.genre,
         releaseDate: track.releaseDate,
         isExplicit: track.isExplicit,
+        cover: track.cover || track.coverUrl,
       },
     });
   }
@@ -67,6 +68,43 @@ export class SearchService {
       id: hit._id,
       type: hit._index,
       ...hit._source,
+    }));
+  }
+
+  static async getSuggestions(query: string) {
+    const result = await esClient.search({
+      index: 'tracks',
+      query: {
+        bool: {
+          should: [
+            {
+              match_phrase_prefix: {
+                title: {
+                  query,
+                  boost: 5
+                }
+              }
+            },
+            {
+              match: {
+                artistName: {
+                  query,
+                  boost: 2
+                }
+              }
+            }
+          ]
+        }
+      },
+      size: 5
+    });
+
+    return result.hits.hits.map((hit: any) => ({
+      id: hit._id,
+      title: hit._source.title,
+      artistName: hit._source.artistName,
+      cover: hit._source.cover,
+      type: 'track'
     }));
   }
 }

@@ -48,7 +48,7 @@ export default function Settings() {
             key={s}
             onClick={() => setActiveSection(s)}
             style={{
-              width: '100%', border: 'none', background: 'transparent', textAlign: 'left',
+              width: '100%', border: 'none', textAlign: 'left',
               cursor: 'pointer', padding: '10px 12px', borderRadius: 'var(--radius-md)',
               color: s === activeSection ? 'var(--color-primary)' : 'var(--color-on-surface-variant)',
               fontFamily: 'inherit', fontSize: '0.9rem', fontWeight: s === activeSection ? 700 : 500,
@@ -125,9 +125,9 @@ export default function Settings() {
             <div className="glass" style={{ borderRadius: 'var(--radius-xl)', padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <h2 style={{ fontWeight: 700, fontSize: '1.125rem' }}>Subscription</h2>
-                <span className={`badge ${user?.billingTier === 'patron' ? 'badge-premium' : ''}`}
-                  style={user?.billingTier !== 'patron' ? { background: 'rgba(255,255,255,0.1)', color: 'var(--color-on-surface-variant)' } : {}}>
-                  {user?.billingTier === 'patron' ? 'Premium' : 'Free'}
+                <span className={`badge ${user?.billingTier === 'PATRON' ? 'badge-premium' : ''}`}
+                  style={user?.billingTier !== 'PATRON' ? { background: 'rgba(255,255,255,0.1)', color: 'var(--color-on-surface-variant)' } : {}}>
+                  {user?.billingTier === 'PATRON' ? 'Premium' : 'Free'}
                 </span>
               </div>
               {['🎵 HiFi Lossless Audio', '📥 Offline Downloads', '📢 Ad-Free Experience', '🎧 Unlimited Skips', '📱 Multiple Devices'].map(f => (
@@ -135,7 +135,7 @@ export default function Settings() {
                   <span style={{ color: 'var(--color-primary)' }}>✓</span> {f}
                 </div>
               ))}
-              {user?.billingTier !== 'patron' && (
+              {user?.billingTier !== 'PATRON' && (
                 <button className="btn-primary btn" style={{ width: '100%', padding: '14px', fontSize: '1rem', marginTop: 8 }}>
                   ✨ Upgrade to Premium — Coming Soon
                 </button>

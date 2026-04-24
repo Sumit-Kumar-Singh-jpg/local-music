@@ -18,4 +18,10 @@ export const searchRoutes = async (app: FastifyInstance) => {
     const results = await SearchService.searchTracks(q);
     return { results };
   });
+
+  app.get('/suggestions', async (request, reply) => {
+    const { q } = searchQuerySchema.parse(request.query);
+    const results = await SearchService.getSuggestions(q);
+    return { results };
+  });
 };

@@ -1,46 +1,42 @@
-/* ============================================================
-   LOCAL MUSIC — GLOBAL DESIGN TOKENS & STYLES
-   Design System: "Onyx Pulse / Nocturnal Gallery"
-   ============================================================ */
+/* ── Cosmic Design Tokens (Stitch Inspired) ── */
+@import url('./styles/designTokens.css');
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
-
-/* ── Design Tokens ── */
 :root {
-  /* Colors */
-  --color-bg:           #0e0e13;
-  --color-surface:      #0e0e13;
-  --color-surface-low:  #131319;
-  --color-surface-mid:  #19191f;
-  --color-surface-high: #1f1f26;
-  --color-surface-top:  #25252d;
-  --color-surface-bright: #2c2b33;
+  /* Colors - Mapping to new design tokens */
+  --color-bg:           var(--color-void);
+  --color-surface:      var(--color-void);
+  --color-surface-low:  var(--color-slate);
+  --color-surface-mid:  #1d2026;
+  --color-surface-high: #272a31;
+  --color-surface-top:  #32353c;
+  --color-surface-bright: #363940;
 
-  --color-primary:      #cc97ff;
-  --color-primary-dim:  #9c48ea;
-  --color-secondary:    #ff67ad;
-  --color-tertiary:     #699cff;
+  --color-primary:      var(--color-moon-steel);
+  --color-primary-dim:  #8ba7c7;
+  --color-secondary:    #b9c8d9;
+  --color-tertiary:     #c3c7cb;
 
-  --color-on-surface:         #f9f5fd;
-  --color-on-surface-variant: #acaab1;
-  --color-outline:            rgba(255,255,255,0.08);
+  --color-on-surface:         #e1e2eb;
+  --color-on-surface-variant: var(--color-dust);
+  --color-outline:            rgba(173, 201, 234, 0.12);
 
   /* Gradients */
-  --grad-primary: linear-gradient(135deg, #A855F7, #EC4899);
-  --grad-hero:    linear-gradient(135deg, #A855F7 0%, #EC4899 50%, #3B82F6 100%);
-  --grad-text:    linear-gradient(135deg, #cc97ff, #ff67ad);
+  --grad-primary: linear-gradient(135deg, #adc9ea, #8ba7c7);
+  --grad-hero:    linear-gradient(135deg, #10131a 0%, #1d2026 100%);
+  --grad-text:    linear-gradient(135deg, #adc9ea, #b9c8d9);
 
   /* Glass */
-  --glass-bg:     rgba(255,255,255,0.06);
-  --glass-bg-low: rgba(255,255,255,0.04);
-  --glass-border: rgba(255,255,255,0.08);
-  --glass-blur:   blur(20px);
-  --glass-blur-heavy: blur(40px);
+  --glass-bg:     rgba(13, 18, 32, 0.8);
+  --glass-bg-low: rgba(16, 19, 26, 0.6);
+  --glass-border: var(--border-glass);
+  --glass-blur:   blur(12px);
+  --glass-blur-heavy: blur(24px);
 
-  /* Layout */
-  --sidebar-width:    240px;
-  --topbar-height:    64px;
-  --player-height:    72px;
+  /* Layout - FIXED RATIOS */
+  --sidebar-width:    260px;
+  --sidebar-collapsed-width: 80px;
+  --topbar-height:    72px;
+  --player-height:    96px;
 
   /* Spacing */
   --space-1: 4px;
@@ -54,20 +50,19 @@
   --space-12: 48px;
 
   /* Radius */
-  --radius-sm:   6px;
-  --radius-md:   10px;
-  --radius-lg:   16px;
-  --radius-xl:   20px;
+  --radius-sm:   4px;
+  --radius-md:   8px;
+  --radius-lg:   12px;
+  --radius-xl:   16px;
   --radius-2xl:  24px;
   --radius-full: 999px;
 
   /* Shadows */
-  --shadow-glow-primary: 0 0 40px rgba(168, 85, 247, 0.25);
-  --shadow-glow-secondary: 0 0 40px rgba(236, 72, 153, 0.2);
+  --shadow-glow-primary: var(--shadow-lunar-lift);
 
   /* Transitions */
-  --transition: all 0.2s ease;
-  --transition-slow: all 0.35s ease;
+  --transition: all 0.25s cubic-bezier(0.19, 1, 0.22, 1);
+  --transition-slow: all 0.4s cubic-bezier(0.19, 1, 0.22, 1);
 }
 
 /* ── Reset ── */
@@ -404,4 +399,44 @@ body {
 .input-glass:focus {
   border-color: rgba(168,85,247,0.5);
   box-shadow: 0 0 0 3px rgba(168,85,247,0.12);
+}
+
+/* ── Mobile Responsive Overrides ── */
+@media (max-width: 768px) {
+  :root {
+    --sidebar-width: 0px;
+    --space-8: 16px;
+    --topbar-height: 56px;
+  }
+
+  .main-content {
+    padding: 16px !important;
+    padding-top: calc(var(--topbar-height) + 16px) !important;
+  }
+
+  .section-title {
+    font-size: 1.5rem !important;
+  }
+
+  .cards-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px !important;
+  }
+
+  .topbar-nav, .topbar-search {
+    display: none !important;
+  }
+
+  .topbar {
+    justify-content: flex-end;
+    padding: 0 16px;
+  }
+
+  .track-row {
+    grid-template-columns: 40px 1fr 60px !important;
+  }
+
+  .track-num {
+    display: none;
+  }
 }

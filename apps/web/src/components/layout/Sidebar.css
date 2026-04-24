@@ -7,13 +7,42 @@
   overflow: hidden;
   flex-shrink: 0;
   border-right: 1px solid var(--glass-border);
+  transition: width var(--transition-base), padding var(--transition-base);
+}
+
+.sidebar.collapsed {
+  --sidebar-width: 80px;
+  padding: var(--space-6) var(--space-2);
+}
+
+.sidebar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 var(--space-2) var(--space-6);
+}
+
+.sidebar.collapsed .sidebar-header {
+  justify-content: center;
+}
+
+.toggle-btn {
+  opacity: 0.5;
+  transition: opacity 0.2s, transform 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+}
+
+.toggle-btn:hover {
+  opacity: 1;
 }
 
 .sidebar-logo {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: 0 var(--space-2) var(--space-6);
 }
 .sidebar-logo-icon {
   font-size: 1.75rem;
@@ -44,7 +73,12 @@
   color: var(--color-on-surface-variant);
   font-size: 0.9375rem;
   font-weight: 500;
-  transition: var(--transition);
+  transition: var(--transition-base);
+}
+
+.sidebar.collapsed .sidebar-link {
+  justify-content: center;
+  padding: 12px;
 }
 .sidebar-link:hover {
   background: var(--glass-bg);
@@ -139,6 +173,62 @@
   border: 2px solid var(--glass-border);
   background: var(--color-surface-top);
 }
+/* Admin Ingest */
+.admin-quick-ingest {
+  margin-top: 12px;
+  padding: 12px;
+  background: rgba(168, 85, 247, 0.05);
+  border-radius: 16px;
+  border: 1px solid rgba(168, 85, 247, 0.1);
+}
+
+.quick-ingest-form {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.quick-ingest-form input {
+  flex: 1;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  padding: 6px 10px;
+  color: white;
+  font-size: 0.8rem;
+}
+
+.quick-ingest-form button {
+  background: var(--color-primary);
+  border: none;
+  border-radius: 8px;
+  padding: 0 10px;
+  color: white;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.quick-ingest-form button:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 10px var(--color-primary);
+}
+
+.sidebar-admin-btn {
+  width: 100%;
+  justify-content: center;
+  margin-bottom: 12px;
+  font-weight: 700;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+.sidebar-hint {
+  font-size: 0.8rem;
+  color: var(--color-on-surface-variant);
+  margin-top: 12px;
+  font-style: italic;
+  opacity: 0.7;
+}
+
 .sidebar-user-info {
   flex: 1;
   min-width: 0;

@@ -27,10 +27,13 @@ export interface User {
   id: string;
   email: string;
   username: string;
+  name: string;        // Added for consistency
   displayName?: string;
   avatarUrl?: string;
+  avatar?: string;     // Alias for Easier UI consumption
   role: Role;
   billingTier: BillingTier;
+  plan?: BillingTier;  // Alias for mobile consistency
   settings?: UserSettings;
   tasteProfile?: TasteProfile;
   socialLinks?: Record<string, string>;

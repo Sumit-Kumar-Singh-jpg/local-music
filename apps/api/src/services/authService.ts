@@ -20,14 +20,14 @@ export class AuthService {
   }
 
   static async createUser(data: { name: string; email: string; passwordHash: string; username: string }) {
-    const { name, ...userData } = data;
     return prisma.user.create({
       data: {
-        ...userData,
+        ...data,
+        isApproved: false,
         profile: {
           create: {
             handle: data.username,
-            displayName: name,
+            displayName: data.name,
             avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${data.username}`,
             settings: {
               audioQuality: 'NORMAL',
@@ -48,6 +48,7 @@ export class AuthService {
     return prisma.user.findFirst({
       where: {
         OR: [
+          { id: identifier },
           { email: identifier },
           { username: identifier }
         ]

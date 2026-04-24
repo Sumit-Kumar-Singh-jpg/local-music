@@ -31,6 +31,7 @@ model User {
   username        String      @unique
   role            Role        @default(USER)
   billingTier     BillingTier @default(FREE)
+  isApproved      Boolean     @default(false)
   registrationRegion String?
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
@@ -38,6 +39,7 @@ model User {
   profile         Profile?
   artistProfile   ArtistProfile?
   sessions        Session[]
+  playlists       Playlist[]
 }
 
 model Profile {
@@ -76,6 +78,8 @@ model Track {
   duration        Int      // in seconds
   isExplicit      Boolean  @default(false)
   audioUrl        String
+  coverUrl        String?
+  spotifyId       String?  @unique
   highQualityUrl  String?
   losslessUrl     String?
   playCount       Int      @default(0)
@@ -85,9 +89,11 @@ model Track {
   releaseDate     DateTime @default(now())
   
   artistId        String
-  artist          ArtistProfile @relation(fields: [artistId], references: [id])
+  artist          ArtistProfile @relation(fields: [artistId], references: [id], onDelete: Cascade)
   albumId         String?
-  album           Album?   @relation(fields: [albumId], references: [id])
+  album           Album?   @relation(fields: [albumId], references: [id], onDelete: Cascade)
+
+  storage         SongStorage?
 }
 
 model Album {
@@ -98,8 +104,27 @@ model Album {
   type        AlbumType @default(ALBUM)
   
   artistId    String
-  artist      ArtistProfile @relation(fields: [artistId], references: [id])
+  artist      ArtistProfile @relation(fields: [artistId], references: [id], onDelete: Cascade)
   tracks      Track[]
+}
+
+model Playlist {
+  id          String   @id @default(uuid())
+  name        String
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  songs       String[] // Array of track IDs
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model SongStorage {
+  id          String   @id @default(uuid())
+  trackId     String   @unique
+  track       Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  filePath    String
+  storageType String   @default("LOCAL") // LOCAL | S3
+  createdAt   DateTime @default(now())
 }
 
 model Session {
@@ -110,4 +135,17 @@ model Session {
   deviceId  String?
   expiresAt DateTime
   createdAt DateTime @default(now())
+}
+
+model IngestionTask {
+  id              String   @id @default(uuid())
+  url             String
+  status          String   // PENDING, RUNNING, COMPLETED, FAILED, STOPPED
+  progress        Int      @default(0)
+  totalTracks     Int      @default(0)
+  completedTracks Int      @default(0)
+  pid             Int?     // Process ID to allow stopping
+  error           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
