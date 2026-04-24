@@ -46,8 +46,8 @@ export const authApi = {
 
 // ── Music ─────────────────────────────────────────────────────────────────
 export const musicApi = {
-  search: (q: string) =>
-    request<{ results: any[] }>(`/search/tracks?q=${encodeURIComponent(q)}`),
+  search: (q: string, genre?: string) =>
+    request<{ results: any[] }>(`/search/tracks?q=${encodeURIComponent(q)}${genre ? `&genre=${encodeURIComponent(genre)}` : ''}`),
 
   suggestions: (q: string) =>
     request<{ results: any[] }>(`/search/suggestions?q=${encodeURIComponent(q)}`),
@@ -171,6 +171,6 @@ export const adminApi = {
 
 // ── Health ────────────────────────────────────────────────────────────────
 export const healthCheck = () =>
-  fetch('http://localhost:3001/health', { signal: AbortSignal.timeout(3000) })
+  fetch('/health', { signal: AbortSignal.timeout(3000) })
     .then(r => r.json() as Promise<{ status: string; timestamp: string }>)
     .catch(() => ({ status: 'offline', timestamp: '' }))

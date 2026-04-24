@@ -79,6 +79,7 @@ model Track {
   isExplicit      Boolean  @default(false)
   audioUrl        String
   coverUrl        String?
+  genre           String?
   spotifyId       String?  @unique
   highQualityUrl  String?
   losslessUrl     String?
@@ -102,6 +103,7 @@ model Album {
   coverArt    String?
   releaseDate DateTime @default(now())
   type        AlbumType @default(ALBUM)
+  genre       String?
   
   artistId    String
   artist      ArtistProfile @relation(fields: [artistId], references: [id], onDelete: Cascade)
