@@ -29,7 +29,7 @@ function AudioEngine() {
     const onWaiting = () => setPlaybackState('buffering')
     const onPlaying = () => setPlaybackState('playing')
     const onEnded = () => next()
-    const onError = (e: any) => {
+    const onError = () => {
       const errorCode = audio.error?.code
       const errorMessage = audio.error?.message || 'Unknown playback error'
       console.error('[AudioEngine] Playback error:', { errorCode, errorMessage, track: track?.title })

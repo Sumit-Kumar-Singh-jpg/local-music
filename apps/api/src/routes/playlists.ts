@@ -53,7 +53,7 @@ export const playlistRoutes = async (app: FastifyInstance) => {
   // Create playlist (stub for now)
   app.post('/', {
     onRequest: [app.authenticate],
-  }, async (request, reply) => {
+  }, async (request) => {
     const { name, description } = z.object({
       name: z.string().min(1),
       description: z.string().optional(),

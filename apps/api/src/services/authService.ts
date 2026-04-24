@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../db/client';
-import { Role, BillingTier } from '@prisma/client';
+import { Role } from '@prisma/client';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-key-change-me';
 
