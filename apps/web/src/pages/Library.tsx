@@ -8,19 +8,15 @@ const FILTERS = ['All', 'Playlists', 'Albums', 'Artists']
 
 export default function Library() {
   const [filter, setFilter] = useState('All')
-  const { play } = usePlayerStore()
-  const navigate = useNavigate()
   const [playlists, setPlaylists] = useState<any[]>([])
-  const [recentTracks, setRecentTracks] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     Promise.all([
       playlistApi.list().catch(() => ({ playlists: [] })),
       musicApi.trending().catch(() => ({ tracks: [] })),
-    ]).then(([plRes, trRes]) => {
+    ]).then(([plRes]) => {
       setPlaylists(plRes.playlists)
-      setRecentTracks(trRes.tracks)
       setLoading(false)
     })
   }, [])
@@ -36,7 +32,6 @@ export default function Library() {
     })
   }
 
-  const filteredPlaylists = playlists
 
   return (
     <div className="fade-in">

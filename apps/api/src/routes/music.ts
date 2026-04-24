@@ -10,12 +10,12 @@ const idParamSchema = z.object({
 });
 
 export const musicRoutes = async (app: FastifyInstance) => {
-  app.get('/trending', async (request, reply) => {
+  app.get('/trending', async () => {
     const tracks = await MusicService.getTrending();
     return { tracks };
   });
 
-  app.get('/new-releases', async (request, reply) => {
+  app.get('/new-releases', async () => {
     const tracks = await MusicService.getNewReleases();
     return { tracks };
   });
@@ -33,7 +33,7 @@ export const musicRoutes = async (app: FastifyInstance) => {
         reply.header('Content-Type', picture.format);
         return reply.send(picture.data);
       }
-    } catch {}
+    } catch (_err) { /* metadata not available */ }
     return reply.status(404).send({ error: 'No cover' });
   });
 
@@ -104,7 +104,7 @@ export const musicRoutes = async (app: FastifyInstance) => {
     }
   });
 
-  app.get('/:id', async (request, reply) => {
+  app.get('/:id', async (request) => {
     const { id } = idParamSchema.parse(request.params);
     const track = await MusicService.getTrackById(id);
     return { track };

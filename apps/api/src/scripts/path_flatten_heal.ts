@@ -34,7 +34,7 @@ async function healAndFlatten() {
           foundFiles.push(full);
         }
       }
-    } catch {}
+    } catch (_err) { /* ignore read errors */ }
   }
 
   console.log('Scanning project for audio files...');

@@ -8,7 +8,8 @@
     "start": "node dist/server.js",
     "seed": "tsx src/db/prisma/seed.ts",
     "prisma:generate": "prisma generate --schema src/db/prisma/schema.prisma",
-    "prisma:migrate": "prisma migrate dev --schema src/db/prisma/schema.prisma"
+    "prisma:migrate": "prisma migrate dev --schema src/db/prisma/schema.prisma",
+    "lint": "eslint src/**/*.ts"
   },
   "dependencies": {
     "@elastic/elasticsearch": "^8.11.0",
@@ -42,6 +43,9 @@
     "@types/node": "^20.8.0",
     "tsup": "^8.0.0",
     "tsx": "^4.0.0",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "eslint": "^8.56.0",
+    "@typescript-eslint/parser": "^6.19.1",
+    "@typescript-eslint/eslint-plugin": "^6.19.1"
   }
 }
