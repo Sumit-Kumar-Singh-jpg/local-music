@@ -33,9 +33,13 @@ export default function LoginPage() {
 
     if (tab === 'signup') {
       try {
-        // Use generic values for required registration name if missing in MVP
         await register(name || username, identifier, password, username)
-        navigate('/')
+        setSuccess('Account created! Your account is now pending manual approval by an admin. You will be able to log in once approved.')
+        // Clear form
+        setName('')
+        setUsername('')
+        setIdentifier('')
+        setPassword('')
       } catch (err: any) {
         setError(err.message || 'Registration failed.')
       }

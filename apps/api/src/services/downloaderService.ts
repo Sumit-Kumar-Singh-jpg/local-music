@@ -43,7 +43,7 @@ export class DownloaderService {
     const pythonProcess = spawn(pythonExecutable, [
       '-u', scriptPath,
       url, outputDir,
-      '--service', 'tidal', 'spoti', 'youtube',
+      '--service', 'youtube', 'tidal', 'spoti',
       '--use-track-numbers',
       '--filename-format', '{track_number} - {title} - {artist}'
     ], { 
@@ -81,6 +81,43 @@ export class DownloaderService {
             
             const tData = JSON.parse(match[1]);
 
+            // --- GATEKEEPER: DEEP INTEGRITY VERIFICATION ---
+            if (!tData.path || !fs.existsSync(tData.path)) {
+              console.warn(`[Gatekeeper] REJECTED missing file: ${tData.title}`);
+              continue;
+            }
+
+            const stats = fs.statSync(tData.path);
+            let isValid = true;
+            let actualGenre = 'Unknown';
+
+            // 1. Minimum Size Check (100KB)
+            if (stats.size < 100 * 1024) {
+              console.warn(`[Gatekeeper] REJECTED too small (${stats.size} bytes): ${tData.title}`);
+              isValid = false;
+            }
+
+            // 2. Metadata Parsing Check
+            if (isValid) {
+              try {
+                const mm = await import('music-metadata');
+                const metadata = await mm.parseFile(tData.path);
+                actualGenre = metadata.common.genre?.[0] || 'Unknown';
+              } catch (e) {
+                console.warn(`[Gatekeeper] REJECTED corrupted file: ${tData.title}`);
+                isValid = false;
+              }
+            }
+
+            if (!isValid) {
+              // Automatically cleanup and trigger rescue for partial/corrupted files
+              try { fs.unlinkSync(tData.path); } catch (e) {}
+              console.log(`[Gatekeeper] Triggering YouTube Rescue for: ${tData.title}`);
+              const rescueUrl = `https://open.spotify.com/track/${tData.spotifyId}`;
+              DownloaderService.downloadPlaylist(rescueUrl).catch(e => console.error(`[Rescue Failed] ${e.message}`));
+              continue; // Do NOT index broken tracks
+            }
+
             // Find or create artist safely
             let artist = await prisma.artistProfile.findFirst({ where: { name: tData.artist } });
             if (!artist) {
@@ -113,37 +150,59 @@ export class DownloaderService {
             });
 
             // Update URLs and link storage
-            if (tData.path) {
-              await prisma.songStorage.upsert({
-                where: { trackId: track.id },
-                update: { filePath: tData.path },
-                create: { trackId: track.id, filePath: tData.path, storageType: 'LOCAL' }
+            await prisma.songStorage.upsert({
+              where: { trackId: track.id },
+              update: { filePath: tData.path },
+              create: { trackId: track.id, filePath: tData.path, storageType: 'LOCAL' }
+            });
+
+            await prisma.track.update({
+              where: { id: track.id },
+              data: { 
+                audioUrl: `/api/music/${track.id}/stream`,
+                coverUrl: `/api/music/${track.id}/cover`
+              }
+            });
+
+            // Index into Elasticsearch for immediate discoverability
+            try {
+              const { SearchService } = await import('./searchService');
+              
+              await SearchService.indexTrack({
+                id: track.id,
+                title: track.title,
+                artistName: tData.artist,
+                albumTitle: tData.album || 'Single',
+                genre: actualGenre,
+                releaseDate: new Date(),
+                isExplicit: false
               });
 
+              // Update track with genre in DB
               await prisma.track.update({
                 where: { id: track.id },
-                data: { 
-                  audioUrl: `/api/music/${track.id}/stream`,
-                  coverUrl: `/api/music/${track.id}/cover`
-                }
+                data: { genre: actualGenre }
               });
 
-              // Index into Elasticsearch for immediate discoverability
+              console.log(`[Spotify] Indexed Track in Search with Genre (${actualGenre}) -> ${tData.title}`);
+            } catch (esErr) {
+              console.error(`[Search Index Error] Failed to index ${tData.title}:`, esErr);
+            }
+            console.log(`[Spotify] Indexed Track -> ${tData.title}`);
+            
+            // New: Auto-Heal Path for DB consistency
+            const cleanedPath = tData.path.replace(/_/g, ' ');
+            if (tData.path !== cleanedPath && fs.existsSync(tData.path)) {
               try {
-                const { SearchService } = await import('./searchService');
-                await SearchService.indexTrack({
-                  id: track.id,
-                  title: track.title,
-                  artistName: tData.artist,
-                  albumTitle: tData.album || 'Single',
-                  releaseDate: new Date(),
-                  isExplicit: false
+                fs.renameSync(tData.path, cleanedPath);
+                await prisma.songStorage.update({
+                  where: { trackId: track.id },
+                  data: { filePath: cleanedPath }
                 });
-                console.log(`[Spotify] Indexed Track in Search -> ${tData.title}`);
-              } catch (esErr) {
-                console.error(`[Search Index Error] Failed to index ${tData.title}:`, esErr);
+                console.log(`[Healer] Normalized path for: ${tData.title}`);
+              } catch (e) {
+                console.warn(`[Healer] Failed to rename path: ${e.message}`);
               }
-              console.log(`[Spotify] Indexed Track -> ${tData.title}`);
             }
           } catch (err) {
             console.error(`[DB Error] Failed to parse/insert DB_INDEX from line: "${line}". Error: ${err}`);

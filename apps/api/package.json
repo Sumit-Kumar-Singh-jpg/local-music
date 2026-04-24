@@ -20,6 +20,7 @@
     "@fastify/static": "^9.1.1",
     "@fastify/swagger": "^9.7.0",
     "@fastify/swagger-ui": "^5.2.5",
+    "@fastify/websocket": "^11.2.0",
     "@prisma/client": "^5.5.2",
     "@types/multer": "^2.1.0",
     "axios": "^1.15.0",

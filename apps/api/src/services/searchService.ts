@@ -21,14 +21,26 @@ export class SearchService {
     });
   }
 
-  static async searchTracks(query: string) {
-    const result = await esClient.search({
-      index: 'tracks',
-      query: {
+  static async searchTracks(query: string, genre?: string) {
+    const must: any[] = [
+      {
         multi_match: {
           query,
           fields: ['title^3', 'artistName^2', 'albumTitle', 'genre'],
           fuzziness: 'AUTO',
+        },
+      }
+    ];
+
+    if (genre) {
+      must.push({ match: { genre: { query: genre, operator: 'and' } } });
+    }
+
+    const result = await esClient.search({
+      index: 'tracks',
+      query: {
+        bool: {
+          must,
         },
       },
     });
