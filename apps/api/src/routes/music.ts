@@ -33,7 +33,7 @@ export const musicRoutes = async (app: FastifyInstance) => {
         reply.header('Content-Type', picture.format);
         return reply.send(picture.data);
       }
-    } catch {}
+    } catch (_err) { /* metadata not available */ }
     return reply.status(404).send({ error: 'No cover' });
   });
 

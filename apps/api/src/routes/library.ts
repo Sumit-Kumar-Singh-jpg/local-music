@@ -6,7 +6,7 @@ export const libraryRoutes = async (app: FastifyInstance) => {
   // Get user's liked tracks
   app.get('/likes', {
     onRequest: [app.authenticate],
-  }, async (request, reply) => {
+  }, async (_request, _reply) => {
     const likes = await prisma.track.findMany({
       take: 50,
       orderBy: { playCount: 'desc' },

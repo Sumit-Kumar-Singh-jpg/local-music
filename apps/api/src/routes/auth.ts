@@ -56,18 +56,18 @@ export const authRoutes = async (app: FastifyInstance) => {
     return { user, token };
   });
 
-  app.post('/forgot-password', async (request, reply) => {
+  app.post('/forgot-password', async (request, _reply) => {
     const { identifier } = z.object({ identifier: z.string() }).parse(request.body);
     
     // Attempt to lookup
-    const user = await AuthService.validateUser(identifier);
+    await AuthService.validateUser(identifier);
     // Deliberately return success whether found or not to prevent username enumeration attacks
     return { message: 'If an account exists, a reset link was sent.' };
   });
 
   app.get('/me', {
     onRequest: [app.authenticate]
-  }, async (request, reply) => {
+  }, async (request, _reply) => {
     const user = await AuthService.validateUser(request.user.userId);
     return { user };
   });
