@@ -15,7 +15,10 @@
   "devDependencies": {
     "kill-port": "^2.0.1",
     "turbo": "latest",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "eslint": "^8.56.0",
+    "@typescript-eslint/parser": "^6.19.1",
+    "@typescript-eslint/eslint-plugin": "^6.19.1"
   },
   "packageManager": "npm@11.6.1",
   "workspaces": [
