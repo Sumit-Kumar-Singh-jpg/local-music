@@ -4,6 +4,7 @@ import { z } from 'zod';
 
 const searchQuerySchema = z.object({
   q: z.string().min(1),
+  genre: z.string().optional(),
 });
 
 export const searchRoutes = async (app: FastifyInstance) => {
@@ -14,8 +15,8 @@ export const searchRoutes = async (app: FastifyInstance) => {
   });
 
   app.get('/tracks', async (request, reply) => {
-    const { q } = searchQuerySchema.parse(request.query);
-    const results = await SearchService.searchTracks(q);
+    const { q, genre } = searchQuerySchema.parse(request.query);
+    const results = await SearchService.searchTracks(q, genre);
     return { results };
   });
 

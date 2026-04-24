@@ -60,9 +60,14 @@ export const musicRoutes = async (app: FastifyInstance) => {
           if (fs.existsSync(probedPath)) {
             filePath = probedPath;
             found = true;
-            request.log.info(`[Stream HEALED] Found file with extension: ${path.basename(probedPath)}`);
-            // Update DB for future requests (Service should probably have a method for this)
+            // Update DB for future requests
             await prisma.songStorage.update({ where: { id: storage.id }, data: { filePath: probedPath } });
+            
+            // Invalidate cache
+            const { MusicService: Service } = await import('../services/musicService');
+            Service.clearStorageCache(id);
+            
+            request.log.info(`[Stream HEALED] Found and updated path for: ${path.basename(probedPath)}`);
             break;
           }
         }

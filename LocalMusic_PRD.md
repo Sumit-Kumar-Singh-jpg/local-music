@@ -247,7 +247,7 @@ Priority follows MoSCoW: **P0** = Must-Have, **P1** = Should-Have, **P2** = Coul
 ### 7.3 Web Tech Stack
 - **Frontend:** React 18 + TypeScript; Web Audio API for playback.
 - **State Management:** Zustand + React Query.
-- **Design System:** Radix UI primitives + custom Local Music theme.
+- **Design System:** Solaris High-Fidelity (Radiant Void aesthetic).
 
 ---
 

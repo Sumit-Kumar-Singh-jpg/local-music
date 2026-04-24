@@ -1,38 +1,45 @@
 :root {
-  /* Stitch Design Tokens: Cosmic Artistry */
-  --color-void: #10131a;
-  --color-moon-steel: #adc9ea;
-  --color-dust: #b9c8d9;
-  --color-slate: #1d2026;
+  /* Stitch Design Tokens: Solaris High-Fidelity */
+  --color-void: #05070a;
+  --color-solar-flare: #ffb347;
+  --color-nebula: #7c4dff;
+  --color-cyan: #00e5ff;
+  --color-on-surface: #e1e2e7;
+  --color-on-surface-variant: #d6c3b0;
   
-  --grad-lunar-glow: radial-gradient(circle at center, rgba(173, 201, 234, 0.08) 0%, transparent 70%);
-  --grad-void-panel: linear-gradient(135deg, rgba(29, 32, 38, 0.9) 0%, rgba(16, 19, 26, 0.9) 100%);
+  --grad-solar-glow: radial-gradient(circle at center, rgba(255, 179, 71, 0.12) 0%, transparent 70%);
+  --grad-nebula-glow: radial-gradient(circle at center, rgba(124, 77, 255, 0.15) 0%, transparent 70%);
+  --grad-solar-flare: linear-gradient(135deg, #ffd7a9 0%, #ffb347 100%);
   
-  --shadow-lunar-lift: 0px 20px 40px rgba(173, 201, 234, 0.04);
-  --border-glass: 0.5px solid rgba(140, 167, 199, 0.12);
+  --shadow-solar-lift: 0px 20px 60px rgba(255, 179, 71, 0.05);
+  --shadow-nebula-glow: 0px 0px 40px rgba(124, 77, 255, 0.2);
+  
+  --border-glass: 0.5px solid rgba(255, 179, 71, 0.1);
+  --border-ghost: 1px solid rgba(214, 195, 176, 0.15);
   
   --font-display: 'Space Grotesk', sans-serif;
   --font-body: 'Manrope', sans-serif;
   
-  /* Ratio Fixes */
+  /* Layout Constants */
   --sidebar-width: 260px;
   --sidebar-collapsed-width: 80px;
   --player-height: 96px;
+  --topbar-height: 72px;
 }
 
 body {
   background-color: var(--color-void);
-  color: var(--color-dust);
+  color: var(--color-on-surface);
   font-family: var(--font-body);
   margin: 0;
   overflow: hidden;
 }
 
 .glass-heavy {
-  background: var(--grad-void-panel);
-  backdrop-filter: blur(16px);
+  background: rgba(13, 18, 32, 0.8);
+  backdrop-filter: blur(24px);
   border: var(--border-glass);
-  box-shadow: var(--shadow-lunar-lift);
+  box-shadow: var(--shadow-solar-lift);
 }
 
 .truncate {

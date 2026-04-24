@@ -65,4 +65,8 @@ export class MusicService {
     }
     return storage;
   }
+
+  static clearStorageCache(trackId: string) {
+    storageCache.delete(trackId);
+  }
 }
