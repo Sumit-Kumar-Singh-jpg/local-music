@@ -1,4 +1,4 @@
-import { Outlet, useLocation } from 'react-router-dom'
+import { Outlet } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import TopBar from './TopBar'
 import BottomNav from './BottomNav'
@@ -7,8 +7,6 @@ import { useState, useEffect } from 'react'
 
 export default function AppShell() {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 769)
-  const location = useLocation()
-  const isNowPlayingPage = location.pathname === '/now-playing'
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 769)

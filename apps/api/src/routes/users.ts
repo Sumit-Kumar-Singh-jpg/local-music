@@ -34,7 +34,7 @@ export const userRoutes = async (app: FastifyInstance) => {
       return reply.status(404).send({ error: 'User not found' });
     }
 
-    const updatedProfile = await prisma.profile.update({
+    await prisma.profile.update({
       where: { id: user.profile.id },
       data: updates,
     });

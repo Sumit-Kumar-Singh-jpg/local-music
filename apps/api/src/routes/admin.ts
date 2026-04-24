@@ -6,7 +6,7 @@ export const adminRoutes = async (app: FastifyInstance) => {
   // Get dashboard stats
   app.get('/stats', {
     onRequest: [app.authenticate],
-  }, async (request, reply) => {
+  }, async () => {
     const [userCount, trackCount, artistCount, albumCount] = await Promise.all([
       prisma.user.count({
         where: { NOT: { email: { endsWith: '@sys.loc' } } }
@@ -34,7 +34,7 @@ export const adminRoutes = async (app: FastifyInstance) => {
   // Get recent users
   app.get('/users', {
     onRequest: [app.authenticate],
-  }, async (request, reply) => {
+  }, async (request) => {
     const { limit } = z.object({
       limit: z.coerce.number().min(1).max(100).default(10),
     }).parse(request.query);
@@ -274,7 +274,7 @@ export const adminRoutes = async (app: FastifyInstance) => {
   });
 
   // Telemetry Ingestion (Public-ish but categorized under admin for reporting)
-  app.post('/telemetry', async (request, reply) => {
+  app.post('/telemetry', async (request) => {
     const telemetrySchema = z.object({
       trackId: z.string().optional(),
       error: z.string(),

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { usePlayerStore, formatTime, getArtistName, getCoverUrl } from '../../store/playerStore'
 import { useSyncStore } from '../../store/syncStore'
 import DeviceSync from '../ui/DeviceSync'
@@ -29,7 +29,7 @@ function AudioEngine() {
     const onWaiting = () => setPlaybackState('buffering')
     const onPlaying = () => setPlaybackState('playing')
     const onEnded = () => next()
-    const onError = (e: any) => {
+    const onError = () => {
       const errorCode = audio.error?.code
       const errorMessage = audio.error?.message || 'Unknown playback error'
       console.error('[AudioEngine] Playback error:', { errorCode, errorMessage, track: track?.title })
@@ -118,10 +118,7 @@ export default function NowPlayingBar() {
   } = usePlayerStore()
   const { connectedDevices } = useSyncStore()
   const navigate = useNavigate()
-  const location = useLocation()
   const [showDeviceSync, setShowDeviceSync] = useState(false)
-
-  const isNowPlayingPage = location.pathname === '/now-playing'
 
   const deviceCount = 1 + (connectedDevices?.length || 0)
 

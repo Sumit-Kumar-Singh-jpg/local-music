@@ -6,7 +6,7 @@ export default fp(async (app) => {
 
   const userConnections = new Map<string, Set<any>>();
 
-  app.get('/api/sync/ws', { websocket: true }, (socket, req) => {
+  app.get('/api/sync/ws', { websocket: true }, (socket) => {
     let userId: string | null = null;
     // In Fastify 5 + @fastify/websocket 11, the first argument IS the socket
 

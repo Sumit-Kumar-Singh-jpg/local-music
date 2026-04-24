@@ -1,7 +1,7 @@
-import { FastifyInstance } from 'fastify';
+
 import { prisma } from '../db/client';
 import { spawn } from 'child_process';
-import os from 'os';
+
 import path from 'path';
 import fs from 'fs';
 
@@ -111,7 +111,7 @@ export class DownloaderService {
 
             if (!isValid) {
               // Automatically cleanup and trigger rescue for partial/corrupted files
-              try { fs.unlinkSync(tData.path); } catch (e) {}
+              try { fs.unlinkSync(tData.path); } catch (_e) { /* file already deleted */ }
               console.log(`[Gatekeeper] Triggering YouTube Rescue for: ${tData.title}`);
               const rescueUrl = `https://open.spotify.com/track/${tData.spotifyId}`;
               DownloaderService.downloadPlaylist(rescueUrl).catch(e => console.error(`[Rescue Failed] ${e.message}`));
