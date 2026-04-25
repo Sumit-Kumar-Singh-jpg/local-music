@@ -30,37 +30,19 @@ class YouTubeDownloader:
         self.progress_callback = callback
 
     def get_youtube_url_from_spotify(self, spotify_track_id: str, track_name: str = None, artist_name: str = None) -> str:
-        print("Fetching YouTube URL via Songlink HTML...")
-        url = f"https://song.link/s/{spotify_track_id}"
-        headers = {"User-Agent": "Mozilla/5.0"}
-        try:
-            resp = self.session.get(url, headers=headers, timeout=10)
-            resp.raise_for_status()
-            match = re.search(r'https://(?:music\.)?youtube\.com/watch\?v=([a-zA-Z0-9_-]{11})', resp.text)
-            if match:
-                video_id = match.group(1)
-                return f"https://music.youtube.com/watch?v={video_id}"
-        except Exception:
-            pass
+        # If we got a direct YouTube ID (via our new YouTube playlist parser)
+        if spotify_track_id.startswith("yt:"):
+            video_id = spotify_track_id[3:]
+            return f"https://www.youtube.com/watch?v={video_id}"
+            
+        # Instead of scraping, we just return a ytsearch query!
+        # yt-dlp natively supports searching and downloading the first result.
+        query = f'ytsearch1:"{track_name} {artist_name} audio"'
+        print(f"Using native yt-dlp search: {query}")
+        return query
 
-        print("Starting direct YouTube search (Fallback)...")
-        query = quote(f"{track_name} {artist_name} audio")
-        search_url = f"https://www.youtube.com/results?search_query={query}"
-        try:
-            resp = self.session.get(search_url, timeout=10)
-            match = re.search(r'"videoId":"([a-zA-Z0-9_-]{11})"', resp.text)
-            if match:
-                return f"https://music.youtube.com/watch?v={match.group(1)}"
-        except Exception:
-            pass
-        raise Exception("Failed to resolve YouTube URL")
-
-    def _extract_video_id(self, url: str) -> str:
-        match = re.search(r'(?:v=|/v/|youtu\.be/|/embed/)([a-zA-Z0-9_-]{11})', url)
-        return match.group(1) if match else None
-
-    def _ytdlp_download(self, video_id: str, output_path: str):
-        print(f"Downloading via yt-dlp: {video_id}...")
+    def _ytdlp_download(self, search_query: str, output_path: str):
+        print(f"Downloading via yt-dlp: {search_query}...")
         ydl_opts = {
             'format': 'bestaudio[ext=m4a]/bestaudio',
             'outtmpl': f"{output_path}.%(ext)s",
@@ -68,14 +50,16 @@ class YouTubeDownloader:
             'no_warnings': True,
         }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(f'https://www.youtube.com/watch?v={video_id}', download=True)
+            # yt-dlp will automatically handle 'ytsearch1:...' and download the first result
+            info = ydl.extract_info(search_query, download=True)
+            if 'entries' in info: # if it's a search result, it returns a playlist dict
+                info = info['entries'][0]
             return ydl.prepare_filename(info)
 
     def download_by_spotify_id(self, spotify_track_id, **kwargs):
         output_dir = kwargs.get("output_dir", ".")
         os.makedirs(output_dir, exist_ok=True)
-        yt_url = self.get_youtube_url_from_spotify(spotify_track_id, kwargs.get("spotify_track_name"), kwargs.get("spotify_artist_name"))
-        video_id = self._extract_video_id(yt_url)
+        search_query = self.get_youtube_url_from_spotify(spotify_track_id, kwargs.get("spotify_track_name"), kwargs.get("spotify_artist_name"))
         
         safe_title = sanitize_filename(kwargs.get("spotify_track_name", "Unknown"))
         safe_artist = sanitize_filename(kwargs.get("spotify_artist_name", "Unknown").split(",")[0])
@@ -83,7 +67,7 @@ class YouTubeDownloader:
         
         # Try direct yt-dlp first as it's most reliable
         try:
-            final_path = self._ytdlp_download(video_id, base_path)
+            final_path = self._ytdlp_download(search_query, base_path)
             self.embed_metadata(final_path, **kwargs)
             return final_path
         except Exception as e:

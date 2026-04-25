@@ -94,8 +94,54 @@ def get_metadata(url):
 
 def fetch_tracks(url):
     if not url:
-        print('Warning: Please enter a Spotify URL.')
+        print('Warning: Please enter a URL.')
         return
+
+    if "youtube.com" in url or "youtu.be" in url:
+        print("Detected YouTube URL. Fetching metadata via yt-dlp...")
+        try:
+            import yt_dlp
+            ydl_opts = {
+                'extract_flat': True,
+                'quiet': True,
+                'no_warnings': True,
+            }
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(url, download=False)
+                
+                config.is_playlist = True
+                config.album_or_playlist_name = info.get('title', 'YouTube Playlist')
+                
+                entries = info.get('entries', [info])
+                
+                for i, entry in enumerate(entries):
+                    if not entry: continue
+                    title = entry.get('title', 'Unknown Title')
+                    artist = entry.get('uploader', 'Unknown Artist')
+                    video_id = entry.get('id')
+                    
+                    config.tracks.append(Track(
+                        external_urls=f"https://youtube.com/watch?v={video_id}",
+                        title=title,
+                        artists=artist,
+                        album=config.album_or_playlist_name,
+                        album_artist=artist,
+                        track_number=i + 1,
+                        duration_ms=int(entry.get('duration', 0) * 1000) if entry.get('duration') else 0,
+                        id=f"yt:{video_id}",
+                        isrc="",
+                        release_date="",
+                        cover_url=entry.get('thumbnails', [{}])[-1].get('url', '') if entry.get('thumbnails') else ''
+                    ))
+            print(f"Successfully fetched {len(config.tracks)} tracks from YouTube.")
+            config.is_playlist = True
+            config.is_album = config.is_single_track = False
+            return
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            print(f"Error fetching YouTube metadata: {str(e)}")
+            return
 
     try:
         print('Just a moment. Fetching metadata...')
