@@ -15,7 +15,7 @@
 
 @media (max-width: 768px) {
   .now-playing-bar {
-    bottom: 64px; /* Above BottomNav */
+    bottom: 0;
     height: 72px;
     grid-template-columns: 1fr auto;
     padding: 0 16px;

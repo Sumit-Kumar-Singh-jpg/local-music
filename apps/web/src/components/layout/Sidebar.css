@@ -10,6 +10,22 @@
   transition: width var(--transition-base), padding var(--transition-base);
 }
 
+@media (max-width: 768px) {
+  .sidebar {
+    --sidebar-width: 72px !important;
+    padding: var(--space-4) var(--space-1);
+  }
+  .sidebar-logo-text, .sidebar-link span:not(.sidebar-link-icon), .sidebar-section-header span, .sidebar-user-info, .sidebar-admin-btn span:not(:first-child) {
+    display: none !important;
+  }
+  .sidebar-header {
+    justify-content: center !important;
+  }
+  .toggle-btn {
+    display: none !important;
+  }
+}
+
 .sidebar.collapsed {
   --sidebar-width: 80px;
   padding: var(--space-6) var(--space-2);

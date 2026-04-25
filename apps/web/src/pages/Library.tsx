@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { usePlayerStore } from '../store/playerStore'
 import { musicApi, playlistApi } from '../lib/api'
 import { useModalStore } from '../store/modalStore'
 
 const FILTERS = ['All', 'Playlists', 'Albums', 'Artists']
 
 export default function Library() {
+  const navigate = useNavigate()
   const [filter, setFilter] = useState('All')
   const [playlists, setPlaylists] = useState<any[]>([])
   const [loading, setLoading] = useState(true)

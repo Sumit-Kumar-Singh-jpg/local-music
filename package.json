@@ -7,6 +7,7 @@
     "clean": "npx kill-port 3000 3001",
     "dev:api": "turbo run dev --filter @local-music/api",
     "dev:web": "turbo run dev --filter @local-music/web",
+    "dev:mobile": "turbo run dev --filter @local-music/mobile --filter @local-music/api",
     "build": "turbo run build",
     "lint": "turbo run lint",
     "infra:up": "docker-compose -f infra/docker-compose.yml up -d",

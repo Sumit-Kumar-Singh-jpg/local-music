@@ -23,11 +23,21 @@ export const musicRoutes = async (app: FastifyInstance) => {
   app.get('/:id/cover', async (request, reply) => {
     const { id } = idParamSchema.parse(request.params);
     const storage = await prisma.songStorage.findUnique({ where: { trackId: id } });
-    if (!storage || !fs.existsSync(storage.filePath)) return reply.status(404).send({ error: 'Not found' });
+    if (!storage) return reply.status(404).send({ error: 'Not found' });
+
+    let filePath = storage.filePath;
+    if (!path.isAbsolute(filePath)) {
+      filePath = path.resolve(__dirname, '../../media', filePath);
+    }
+    filePath = path.normalize(filePath);
+
+    if (!fs.existsSync(filePath)) {
+      return reply.status(404).send({ error: 'File missing' });
+    }
     
     try {
       const { parseFile } = await import('music-metadata');
-      const metadata = await parseFile(storage.filePath);
+      const metadata = await parseFile(filePath);
       const picture = metadata.common.picture?.[0];
       if (picture) {
         reply.header('Content-Type', picture.format);
@@ -85,9 +95,9 @@ export const musicRoutes = async (app: FastifyInstance) => {
       }
 
       // Calculate path relative to 'media' directory for fastify-static
-      // Root is registered as apps/api/media
       const mediaRoot = path.resolve(__dirname, '../../media');
-      const relativePath = path.relative(mediaRoot, filePath);
+      // Normalize slashes for fastify-static (always use forward slashes)
+      const relativePath = path.relative(mediaRoot, filePath).replace(/\\/g, '/');
       
       // Explicit MIME handling for .m4a and better range support
       if (filePath.endsWith('.m4a')) {

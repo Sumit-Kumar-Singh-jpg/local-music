@@ -13,7 +13,7 @@ async function rebuildSearch() {
   console.log('--- REBUILDING SEARCH INDEX ---');
   await prisma.$connect();
   
-  const tracks = await prisma.track.findMany();
+  const tracks = await prisma.track.findMany({ include: { artist: true, album: true } });
   console.log(`Syncing ${tracks.length} tracks to Elasticsearch...`);
 
   for (const t of tracks) {
@@ -24,8 +24,8 @@ async function rebuildSearch() {
         body: {
           id: t.id,
           title: t.title,
-          artistName: t.artistName,
-          albumTitle: t.albumTitle,
+          artistName: t.artist.name,
+          albumTitle: t.album?.title || 'Single',
           genre: t.genre || 'Unknown',
           releaseDate: t.releaseDate,
           isExplicit: t.isExplicit

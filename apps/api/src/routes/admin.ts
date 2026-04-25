@@ -1,6 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { prisma } from '../db/client';
 import { z } from 'zod';
+import path from 'path';
 
 export const adminRoutes = async (app: FastifyInstance) => {
   // Get dashboard stats
@@ -121,11 +122,7 @@ export const adminRoutes = async (app: FastifyInstance) => {
     
     // We don't await here if we want backgrounding, but for admin control we might want feedback
     try {
-      if (source === 'spotify') {
-        await DownloaderService.downloadSpotify(url, track.id);
-      } else {
-        await DownloaderService.downloadStream(url, track.id, `${track.id}.mp3`);
-      }
+      await DownloaderService.downloadPlaylist(url);
       
       // Update track with final URL (or local identifier)
       await prisma.track.update({
