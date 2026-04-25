@@ -9,12 +9,12 @@ const prisma = new PrismaClient();
 async function purge() {
   console.log('>>> STARTING SOLARIS DEEP INTEGRITY SCAN');
   await prisma.$connect();
-  const tracks = await prisma.track.findMany();
+  const tracks = await prisma.track.findMany({ include: { storage: true } });
   console.log(`>>> AUDITING ${tracks.length} TRACKS`);
   
   let corruptedCount = 0;
   for (const t of tracks) {
-    if (!t.filePath) {
+    if (!t.storage?.filePath) {
       console.log(`[-] NO_PATH: ${t.title}`);
       await prisma.track.delete({ where: { id: t.id } });
       corruptedCount++;
@@ -22,7 +22,7 @@ async function purge() {
     }
 
     // media folder is relative to apps/api
-    const fullPath = path.resolve('media', t.filePath);
+    const fullPath = path.resolve('media', t.storage.filePath);
     process.stdout.write(`Checking: ${t.title}... `);
 
     let isCorrupted = false;

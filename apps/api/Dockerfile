@@ -23,19 +23,27 @@ RUN npm run build
 # Runner Stage
 FROM node:20-alpine AS runner
 
+# Install system dependencies
+RUN apk add --no-cache python3 py3-pip ffmpeg
+# Install Python dependencies for the downloader
+RUN pip3 install --no-cache-dir requests yt-dlp mutagen --break-system-packages
+
 WORKDIR /app
 
 ENV NODE_ENV=production
 
-# Copy built files and node_modules
+# Copy built files and package definition
 COPY --from=builder /app/apps/api/dist ./dist
 COPY --from=builder /app/apps/api/package*.json ./
-# We need production node_modules
+
+# Install production dependencies
 RUN npm install --omit=dev
 
-# Prisma client is needed in runner
+# Copy generated Prisma client (hoisted path)
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder /app/apps/api/node_modules/@prisma/client ./node_modules/@prisma/client
+
+# Copy downloader source
+COPY --from=builder /app/temp_spotiflac ./temp_spotiflac
 
 EXPOSE 3001
 

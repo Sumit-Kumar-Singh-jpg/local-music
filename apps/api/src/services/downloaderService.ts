@@ -9,8 +9,12 @@ export class DownloaderService {
   static async downloadPlaylist(url: string) {
     // Determine project root and directories
     const apiDir = process.cwd();
-    const projectRoot = path.resolve(apiDir, '..', '..');
-    const tempSpotiDir = path.resolve(projectRoot, 'temp_spotiflac');
+    // Robust resolution: check if temp_spotiflac is in current dir (Docker) or 2 levels up (Local Dev)
+    let tempSpotiDir = path.resolve(apiDir, 'temp_spotiflac');
+    if (!fs.existsSync(tempSpotiDir)) {
+      tempSpotiDir = path.resolve(apiDir, '..', '..', 'temp_spotiflac');
+    }
+    
     const outputDir = path.resolve(apiDir, 'media', 'music');
     
     if (!fs.existsSync(outputDir)) {
@@ -28,16 +32,16 @@ export class DownloaderService {
       }
     });
 
-    // Spawn SpotiFLAC via launcher.py for robust package imports
-    const pythonExecutable = 'python';
+    // Python executable and FFMPEG setup
+    const isWin = process.platform === 'win32';
+    const pythonExecutable = isWin ? 'python' : 'python3';
     const scriptPath = 'launcher.py';
     
-    // FFMPEG path setup for Windows
-    const FFMPEG_DIR = 'C:\\Program Files\\BlueStacks_nxt';
+    // Use system PATH for FFMPEG, with a fallback for common Windows locations if needed
+    // But ideally, ffmpeg should be in the PATH.
     const env = { 
       ...process.env, 
-      PYTHONIOENCODING: 'utf-8',
-      PATH: `${FFMPEG_DIR};${process.env.PATH}`
+      PYTHONIOENCODING: 'utf-8'
     };
 
     const pythonProcess = spawn(pythonExecutable, [
@@ -200,7 +204,7 @@ export class DownloaderService {
                   data: { filePath: cleanedPath }
                 });
                 console.log(`[Healer] Normalized path for: ${tData.title}`);
-              } catch (e) {
+              } catch (e: any) {
                 console.warn(`[Healer] Failed to rename path: ${e.message}`);
               }
             }

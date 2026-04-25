@@ -52,4 +52,7 @@ android/
 
 # Media and Data
 apps/api/media/music/
-temp_spotiflac/
+# Ignore downloaded tracks but track the downloader source
+temp_spotiflac/**/*.flac
+temp_spotiflac/**/*.mp3
+temp_spotiflac/**/*.m4a
