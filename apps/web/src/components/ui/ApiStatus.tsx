@@ -13,7 +13,7 @@ export default function ApiStatus() {
     const check = async () => {
       const result = await healthCheck()
       setHealth({
-        status: result.status === 'ok' ? 'online' : 'offline',
+        status: result.status === 'healthy' ? 'online' : 'offline',
         timestamp: result.timestamp,
       })
     }

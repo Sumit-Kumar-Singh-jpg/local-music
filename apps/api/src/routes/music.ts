@@ -9,7 +9,17 @@ const idParamSchema = z.object({
   id: z.string(),
 });
 
+let registrationCount = 0;
+
 export const musicRoutes = async (app: FastifyInstance) => {
+  registrationCount++;
+  app.log.info(`[MusicRoutes] Registering routes (Attempt: ${registrationCount})`);
+  
+  if (registrationCount > 1) {
+    app.log.warn(`[MusicRoutes] DETECTED DOUBLE REGISTRATION. Skipping to avoid Fastify error.`);
+    return;
+  }
+
   app.get('/trending', async () => {
     const tracks = await MusicService.getTrending();
     return { tracks };
